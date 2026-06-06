@@ -3,23 +3,23 @@ import { UserPlus, Target, CreditCard, Zap } from "lucide-react";
 const steps = [
   {
     icon: UserPlus,
-    title: "Create Your Account",
-    body: "Sign up free in under 2 minutes. Choose your username carefully — it's permanent and it's your trading identity.",
+    title: "Create your account",
+    body: "Sign up in under 2 minutes. Choose your username carefully — it's permanent and it's your trading identity.",
   },
   {
     icon: Target,
-    title: "Choose Your Arena",
+    title: "Choose your arena",
     body: "Browse open duels, active Royale lobbies, upcoming tournaments, or team battles. Join or create based on your plan.",
   },
   {
     icon: CreditCard,
-    title: "Buy Your Account & Get Paired",
-    body: "Select your account size, pay your entry fee. The platform pairs you automatically. Once both traders confirm, your live trading account is unlocked.",
+    title: "Buy your account & get paired",
+    body: "Select your account size, pay your entry fee. The platform pairs you automatically. Once both traders confirm, your trading account is unlocked.",
   },
   {
     icon: Zap,
-    title: "Trade & Win",
-    body: "Compete in real time. Watch your opponent's P&L. Best trader wins the prize. Results are final, verified, and paid out instantly.",
+    title: "Trade & win",
+    body: "Compete in real time. Watch your opponent's P&L. Best trader wins the prize. Results are final, verified, paid out instantly.",
   },
 ];
 
@@ -28,44 +28,42 @@ export default function HowItWorks() {
     <section
       id="how"
       data-testid="how-it-works-section"
-      className="relative py-24 lg:py-32 border-t border-white/5 bg-[#0F1628]/30"
+      className="relative py-24 lg:py-32 border-t border-[#ECECEA] bg-[#F5F5F2]"
     >
-      <div className="max-w-7xl mx-auto px-6 lg:px-10">
-        <div className="max-w-2xl mb-16">
-          <div className="font-mono text-[11px] tracking-[0.42em] uppercase text-[#D4AF37]">
-            04 · The Flow
+      <div className="max-w-7xl mx-auto px-5 lg:px-8">
+        <div className="max-w-2xl mb-14">
+          <div className="text-xs font-mono uppercase tracking-[0.18em] text-[#6B7280]">
+            04 — The flow
           </div>
-          <h2 className="font-display font-black uppercase text-4xl lg:text-5xl mt-4 leading-[1.05]">
-            How <span className="text-[#D4AF37]">It Works.</span>
+          <h2 className="mt-3 text-4xl md:text-5xl font-bold tracking-tight text-[#0F0F12] leading-[1.05]">
+            How it works.
           </h2>
+          <p className="mt-5 text-[15px] text-[#4B5563] leading-relaxed">
+            From sign-up to your first win in four steps.
+          </p>
         </div>
 
-        <div className="relative">
-          {/* Connecting line */}
-          <div className="hidden lg:block absolute top-12 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#D4AF37]/40 to-transparent" />
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-3">
-            {steps.map((s, i) => (
-              <div
-                key={s.title}
-                data-testid={`step-${i + 1}`}
-                className="relative bg-[#0A0E1A] border border-white/10 p-6 hover:border-[#D4AF37]/60 hover:-translate-y-1 transition-all"
-              >
-                <div className="flex items-start justify-between mb-6">
-                  <div className="w-12 h-12 grid place-items-center bg-[#D4AF37] text-[#0A0E1A] gold-glow">
-                    <s.icon className="w-5 h-5" strokeWidth={2.5} />
-                  </div>
-                  <span className="font-display font-black text-5xl text-white/5 leading-none">
-                    0{i + 1}
-                  </span>
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
+          {steps.map((s, i) => (
+            <div
+              key={s.title}
+              data-testid={`step-${i + 1}`}
+              className="relative bg-white rounded-3xl border border-[#ECECEA] p-7 hover:-translate-y-1 hover:shadow-[0_18px_36px_-12px_rgba(15,15,18,0.1)] transition-all"
+            >
+              <div className="flex items-start justify-between mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-[#0F0F12] text-white grid place-items-center">
+                  <s.icon className="w-5 h-5" strokeWidth={2} />
                 </div>
-                <h3 className="font-display font-bold uppercase text-lg tracking-wide text-white mb-3">
-                  {s.title}
-                </h3>
-                <p className="text-[#94A3B8] text-sm leading-relaxed">{s.body}</p>
+                <span className="font-mono text-sm font-medium text-[#6B7280]">
+                  0{i + 1}
+                </span>
               </div>
-            ))}
-          </div>
+              <h3 className="text-lg font-semibold tracking-tight text-[#0F0F12]">
+                {s.title}
+              </h3>
+              <p className="mt-2 text-[14px] text-[#4B5563] leading-relaxed">{s.body}</p>
+            </div>
+          ))}
         </div>
       </div>
     </section>

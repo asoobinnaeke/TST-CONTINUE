@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
-import { Menu, X, Swords } from "lucide-react";
+import { Menu, X } from "lucide-react";
+
+const LOGO_WORDMARK =
+  "https://customer-assets.emergentagent.com/job_trade-duel-arena/artifacts/aemoxt7k_Asset%2025%404x-8.png";
 
 const links = [
   { label: "Products", id: "products" },
-  { label: "How It Works", id: "how" },
+  { label: "How it works", id: "how" },
   { label: "Pricing", id: "pricing" },
   { label: "FAQ", id: "faq" },
-  { label: "Contact", id: "footer" },
 ];
 
 export default function Nav() {
@@ -14,74 +16,67 @@ export default function Nav() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
+    const onScroll = () => setScrolled(window.scrollY > 12);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   const goto = (id) => {
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
     setOpen(false);
   };
 
   return (
     <header
       data-testid="main-nav"
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
         scrolled
-          ? "bg-[#0A0E1A]/85 backdrop-blur-2xl border-b border-[#D4AF37]/15"
+          ? "bg-[#FAFAF7]/85 backdrop-blur-xl border-b border-[#ECECEA]"
           : "bg-transparent"
       }`}
     >
-      <div className="max-w-7xl mx-auto px-6 lg:px-10 h-20 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-5 lg:px-8 h-[68px] flex items-center justify-between">
         <button
           onClick={() => goto("hero")}
-          className="flex items-center gap-3 group"
+          className="flex items-center"
           data-testid="nav-logo"
+          aria-label="The Select Traders home"
         >
-          <span className="grid place-items-center w-9 h-9 border border-[#D4AF37]/60 text-[#D4AF37] group-hover:bg-[#D4AF37] group-hover:text-[#0A0E1A] transition-colors">
-            <Swords className="w-4 h-4" strokeWidth={2.5} />
-          </span>
-          <div className="font-display font-extrabold tracking-[0.18em] text-[#D4AF37] text-[15px] leading-none">
-            THE SELECT
-            <div className="text-white text-[10px] tracking-[0.35em] mt-1 font-medium">
-              TRADERS
-            </div>
-          </div>
+          <img src={LOGO_WORDMARK} alt="The Select Traders" className="h-9 w-auto" />
         </button>
 
-        <nav className="hidden lg:flex items-center gap-10">
+        <nav className="hidden lg:flex items-center gap-1 bg-white/60 border border-[#ECECEA] rounded-full px-2 py-1.5 backdrop-blur-sm">
           {links.map((l) => (
             <button
               key={l.id}
               onClick={() => goto(l.id)}
               data-testid={`nav-link-${l.id}`}
-              className="text-[11px] tracking-[0.32em] uppercase text-[#94A3B8] hover:text-[#D4AF37] transition-colors font-medium"
+              className="text-[14px] font-medium text-[#1F2024] px-4 py-2 rounded-full hover:bg-[#F5F5F2] transition-colors"
             >
               {l.label}
             </button>
           ))}
         </nav>
 
-        <div className="hidden lg:flex items-center gap-3">
+        <div className="hidden lg:flex items-center gap-2">
           <button
             data-testid="nav-signin-btn"
-            className="text-[11px] tracking-[0.32em] uppercase border border-white/15 text-white px-5 py-3 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all"
+            className="text-[14px] font-medium text-[#1F2024] px-4 py-2 rounded-full hover:bg-[#F5F5F2] transition-colors"
           >
-            Sign In
+            Sign in
           </button>
           <button
             data-testid="nav-getstarted-btn"
             onClick={() => goto("pricing")}
-            className="text-[11px] tracking-[0.32em] uppercase bg-[#D4AF37] text-[#0A0E1A] font-bold px-5 py-3 hover:bg-white hover:shadow-[0_0_24px_rgba(212,175,55,0.45)] transition-all"
+            className="inline-flex items-center gap-2 bg-[#0F0F12] text-white text-[14px] font-medium px-5 py-2.5 rounded-full hover:bg-[#1F2024] transition-all hover:-translate-y-px"
           >
-            Get Started
+            Get started
+            <span className="inline-block w-1.5 h-1.5 bg-[#B4E04C] rounded-full" />
           </button>
         </div>
 
         <button
-          className="lg:hidden text-white p-2"
+          className="lg:hidden p-2 -mr-2 text-[#0F0F12]"
           onClick={() => setOpen(!open)}
           data-testid="nav-mobile-toggle"
           aria-label="Toggle menu"
@@ -92,24 +87,24 @@ export default function Nav() {
 
       {open && (
         <div
-          className="lg:hidden bg-[#0A0E1A] border-t border-[#D4AF37]/20 px-6 py-6 space-y-4"
+          className="lg:hidden bg-[#FAFAF7] border-t border-[#ECECEA] px-5 py-6 space-y-1"
           data-testid="nav-mobile-menu"
         >
           {links.map((l) => (
             <button
               key={l.id}
               onClick={() => goto(l.id)}
-              className="block w-full text-left text-sm tracking-[0.28em] uppercase text-[#94A3B8] hover:text-[#D4AF37]"
+              className="block w-full text-left text-[15px] font-medium text-[#1F2024] py-3 hover:text-[#0F0F12]"
             >
               {l.label}
             </button>
           ))}
-          <div className="pt-4 flex flex-col gap-3 border-t border-white/10">
-            <button className="text-xs tracking-[0.28em] uppercase border border-white/15 text-white px-5 py-3">
-              Sign In
+          <div className="pt-4 flex flex-col gap-2 border-t border-[#ECECEA]">
+            <button className="text-[14px] font-medium text-[#1F2024] px-4 py-3 rounded-full bg-white border border-[#ECECEA]">
+              Sign in
             </button>
-            <button className="text-xs tracking-[0.28em] uppercase bg-[#D4AF37] text-[#0A0E1A] font-bold px-5 py-3">
-              Get Started
+            <button className="bg-[#0F0F12] text-white text-[14px] font-medium px-4 py-3 rounded-full">
+              Get started
             </button>
           </div>
         </div>

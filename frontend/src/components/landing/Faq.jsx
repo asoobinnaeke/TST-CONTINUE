@@ -12,7 +12,7 @@ const items = [
   },
   {
     q: "How do I get paid my winnings?",
-    a: "Winnings are credited to your THE SELECT TRADERS wallet upon match completion and verified result. You can withdraw to your linked bank account or crypto wallet. Minimum withdrawal is $10.",
+    a: "Winnings are credited to your wallet upon match completion and verified result. You can withdraw to your linked bank account or crypto wallet. Minimum withdrawal is $10.",
   },
   {
     q: "What markets can I trade?",
@@ -28,15 +28,15 @@ const items = [
   },
   {
     q: "What is a Custom Duel?",
-    a: "A Custom Duel is a 1v1 competition created by a Pro Plan member with fully personalised rules: leverage, drawdown limits, account size, timeline, instruments, and entry fee. Custom Duels are displayed with a gold background in the Duel Broadcast Centre, distinguishing them from Standard Duels.",
+    a: "A Custom Duel is a 1v1 competition created by a Pro Plan member with fully personalised rules: leverage, drawdown limits, account size, timeline, instruments, and entry fee. Custom Duels are highlighted in the Duel Broadcast Centre, distinguishing them from Standard Duels.",
   },
   {
     q: "What is the spawn centre?",
     a: "When you purchase a standard account for a 1v1 Duel, you are placed in the Spawn Centre — a live matchmaking queue. If another trader purchases the same account size, you are automatically paired. A 5-minute pairing countdown begins. Once paired, both traders must accept. Upon acceptance, your trading accounts are activated and a countdown begins before trading opens.",
   },
   {
-    q: "Is THE SELECT TRADERS regulated?",
-    a: "THE SELECT TRADERS operates as a skill-based competitive platform. We work with regulated liquidity providers for market data and execution infrastructure. Depending on your jurisdiction, different terms may apply. See our Terms & Conditions for full details.",
+    q: "Is The Select Traders regulated?",
+    a: "The Select Traders operates as a skill-based competitive platform. We work with regulated liquidity providers for market data and execution infrastructure. Depending on your jurisdiction, different terms may apply. See our Terms & Conditions for full details.",
   },
   {
     q: "What is the Free plan, exactly?",
@@ -53,35 +53,44 @@ export default function Faq() {
     <section
       id="faq"
       data-testid="faq-section"
-      className="relative py-24 lg:py-32 border-t border-white/5"
+      className="relative py-24 lg:py-32 border-t border-[#ECECEA]"
     >
-      <div className="max-w-4xl mx-auto px-6 lg:px-10">
-        <div className="mb-12 text-center">
-          <div className="font-mono text-[11px] tracking-[0.42em] uppercase text-[#D4AF37]">
-            06 · Answers
+      <div className="max-w-7xl mx-auto px-5 lg:px-8 grid lg:grid-cols-12 gap-12">
+        <div className="lg:col-span-4">
+          <div className="text-xs font-mono uppercase tracking-[0.18em] text-[#6B7280]">
+            06 — Answers
           </div>
-          <h2 className="font-display font-black uppercase text-4xl lg:text-5xl mt-4 leading-[1.05]">
-            Frequently Asked <br /> <span className="text-[#D4AF37]">Questions.</span>
+          <h2 className="mt-3 text-4xl md:text-5xl font-bold tracking-tight text-[#0F0F12] leading-[1.05]">
+            Frequently asked questions.
           </h2>
+          <p className="mt-5 text-[15px] text-[#4B5563]">
+            Can't find what you're looking for?{" "}
+            <a href="#footer" className="text-[#0F0F12] underline underline-offset-4 decoration-[#B4E04C] decoration-2 hover:decoration-[#A78BFA]">
+              Get in touch
+            </a>
+            .
+          </p>
         </div>
 
-        <Accordion type="single" collapsible className="space-y-3">
-          {items.map((item, i) => (
-            <AccordionItem
-              key={i}
-              value={`item-${i}`}
-              data-testid={`faq-item-${i}`}
-              className="bg-[#0F1628] border border-white/8 hover:border-[#D4AF37]/40 transition-colors px-6 [&_*]:!no-underline rounded-none"
-            >
-              <AccordionTrigger className="font-display uppercase tracking-wide text-left text-white hover:text-[#D4AF37] py-5 text-base">
-                {item.q}
-              </AccordionTrigger>
-              <AccordionContent className="text-[#94A3B8] leading-relaxed pb-5">
-                {item.a}
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
+        <div className="lg:col-span-8">
+          <Accordion type="single" collapsible className="divide-y divide-[#ECECEA] border-y border-[#ECECEA]">
+            {items.map((item, i) => (
+              <AccordionItem
+                key={i}
+                value={`item-${i}`}
+                data-testid={`faq-item-${i}`}
+                className="border-none [&_*]:!no-underline"
+              >
+                <AccordionTrigger className="text-left text-[#0F0F12] font-semibold text-[16px] md:text-[17px] py-6 hover:text-[#0F0F12]">
+                  {item.q}
+                </AccordionTrigger>
+                <AccordionContent className="text-[#4B5563] leading-relaxed pb-6 text-[15px] pr-8">
+                  {item.a}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </div>
       </div>
     </section>
   );

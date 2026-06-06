@@ -1,49 +1,46 @@
-import { Quote } from "lucide-react";
-
 export default function Mission() {
   return (
     <section
       data-testid="mission-section"
-      className="relative py-24 lg:py-32 border-t border-white/5"
+      className="relative py-24 lg:py-32 border-t border-[#ECECEA]"
     >
-      <div className="max-w-7xl mx-auto px-6 lg:px-10">
-        <div className="grid lg:grid-cols-12 gap-12">
-          <div className="lg:col-span-5">
-            <div className="font-mono text-[11px] tracking-[0.42em] uppercase text-[#D4AF37]">
-              01 · Manifesto
+      <div className="max-w-7xl mx-auto px-5 lg:px-8">
+        <div className="grid lg:grid-cols-12 gap-12 items-start">
+          <div className="lg:col-span-4">
+            <div className="text-xs font-mono uppercase tracking-[0.18em] text-[#6B7280]">
+              01 — Manifesto
             </div>
-            <h2 className="font-display font-black uppercase text-4xl lg:text-5xl mt-4 leading-[1.05]">
-              A Stadium <br /> For <span className="text-[#D4AF37]">Skill.</span>
+            <h2 className="mt-3 text-3xl md:text-4xl font-bold tracking-tight text-[#0F0F12] leading-tight">
+              A stadium <br /> for skill.
             </h2>
           </div>
 
-          <div className="lg:col-span-7 grid md:grid-cols-2 gap-8">
-            <div className="border-l-2 border-[#D4AF37] pl-6">
-              <div className="font-mono text-[10px] tracking-[0.32em] uppercase text-[#94A3B8] mb-3">
-                Our Mission
+          <div className="lg:col-span-8 grid md:grid-cols-2 gap-8">
+            <div className="bg-white rounded-2xl border border-[#ECECEA] p-7">
+              <div className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-[0.18em] text-[#0F0F12] bg-[#E6F4C2] rounded-full px-3 py-1">
+                Mission
               </div>
-              <p className="text-[#F0F0F0] leading-relaxed">
-                To give every trader in the world a fair, competitive arena to prove their skill — and earn from it. We believe trading skill deserves more than a brokerage account.{" "}
-                <span className="text-[#D4AF37]">It deserves a stadium.</span>
+              <p className="mt-4 text-[15px] text-[#1F2024] leading-relaxed">
+                To give every trader a fair, competitive arena to prove their skill — and earn from it. Trading skill deserves more than a brokerage account.{" "}
+                <span className="font-semibold text-[#0F0F12]">It deserves a stadium.</span>
               </p>
             </div>
-            <div className="border-l-2 border-[#00C9A7] pl-6">
-              <div className="font-mono text-[10px] tracking-[0.32em] uppercase text-[#94A3B8] mb-3">
-                Our Vision
+            <div className="bg-white rounded-2xl border border-[#ECECEA] p-7">
+              <div className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-[0.18em] text-white bg-[#A78BFA] rounded-full px-3 py-1">
+                Vision
               </div>
-              <p className="text-[#F0F0F0] leading-relaxed">
+              <p className="mt-4 text-[15px] text-[#1F2024] leading-relaxed">
                 To become the global standard for competitive trading — where the world's best traders are known by name, ranked by performance, and{" "}
-                <span className="text-[#00C9A7]">rewarded for skill</span> the way esport athletes are rewarded for theirs.
+                <span className="font-semibold text-[#0F0F12]">rewarded the way esport athletes are.</span>
               </p>
             </div>
           </div>
         </div>
 
-        <div className="mt-20 relative max-w-4xl mx-auto">
-          <Quote className="absolute -top-6 -left-2 w-12 h-12 text-[#D4AF37]/30" />
-          <blockquote className="font-display text-2xl lg:text-4xl text-white leading-tight uppercase tracking-tight pl-8 border-l-2 border-[#D4AF37]/40">
-            "What if the world's best traders didn't just beat the market —{" "}
-            <span className="text-[#D4AF37]">they beat each other?</span>"
+        <div className="mt-20 max-w-4xl mx-auto text-center">
+          <blockquote className="text-3xl md:text-5xl font-bold tracking-tight text-[#0F0F12] leading-[1.1]">
+            What if the world's best traders didn't just beat the market —{" "}
+            <span className="text-[#A78BFA]">they beat each other?</span>
           </blockquote>
         </div>
       </div>

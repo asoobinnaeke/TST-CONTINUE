@@ -1,34 +1,39 @@
 import { useEffect, useState } from "react";
-import { ArrowUpRight, Play, TrendingUp, Users, Globe2 } from "lucide-react";
+import { ArrowUpRight, Play, ArrowUpRight as Up, ArrowDownRight as Down } from "lucide-react";
 import {
   ResponsiveContainer,
   AreaChart,
   Area,
-  CartesianGrid,
   YAxis,
 } from "recharts";
 
-const seed = Array.from({ length: 40 }, (_, i) => ({
-  i,
-  a: 100 + Math.sin(i / 3) * 20 + Math.random() * 10,
-  b: 100 + Math.cos(i / 4) * 18 + Math.random() * 8,
-}));
+const ICON_PURPLE = "https://customer-assets.emergentagent.com/job_trade-duel-arena/artifacts/bo6j2sct_Asset%2029%404x-8.png";
+
+const seedA = Array.from({ length: 32 }, (_, i) => ({ i, v: 100 + Math.sin(i / 3) * 14 + Math.random() * 5 }));
+const seedB = Array.from({ length: 32 }, (_, i) => ({ i, v: 100 + Math.cos(i / 4) * 11 - Math.random() * 6 }));
 
 export default function Hero() {
-  const [data, setData] = useState(seed);
+  const [a, setA] = useState(seedA);
+  const [b, setB] = useState(seedB);
+  const [pnlA, setPnlA] = useState(2847);
+  const [pnlB, setPnlB] = useState(-1600);
 
   useEffect(() => {
     const t = setInterval(() => {
-      setData((prev) => {
+      setA((prev) => {
         const next = prev.slice(1);
         const last = prev[prev.length - 1];
-        next.push({
-          i: last.i + 1,
-          a: Math.max(50, last.a + (Math.random() - 0.45) * 6),
-          b: Math.max(50, last.b + (Math.random() - 0.55) * 6),
-        });
+        next.push({ i: last.i + 1, v: Math.max(70, last.v + (Math.random() - 0.42) * 5) });
         return next;
       });
+      setB((prev) => {
+        const next = prev.slice(1);
+        const last = prev[prev.length - 1];
+        next.push({ i: last.i + 1, v: Math.max(70, last.v + (Math.random() - 0.55) * 5) });
+        return next;
+      });
+      setPnlA((p) => Math.round(p + (Math.random() - 0.3) * 80));
+      setPnlB((p) => Math.round(p + (Math.random() - 0.55) * 80));
     }, 1200);
     return () => clearInterval(t);
   }, []);
@@ -37,188 +42,187 @@ export default function Hero() {
     <section
       id="hero"
       data-testid="hero-section"
-      className="relative min-h-screen pt-32 pb-20 overflow-hidden"
+      className="relative pt-32 pb-20 lg:pt-40 lg:pb-28 overflow-hidden"
     >
-      {/* Background layers */}
-      <div className="absolute inset-0 bg-grid opacity-60" />
-      <div className="absolute inset-0 hero-glow" />
-      <div
-        className="absolute inset-0 opacity-[0.08] mix-blend-screen"
-        style={{
-          backgroundImage:
-            "url('https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzN8MHwxfHNlYXJjaHwyfHxkYXJrJTIwYWJzdHJhY3QlMjBmaW5hbmNpYWwlMjBjaGFydHxlbnwwfHx8fDE3ODA3ODQyNDN8MA&ixlib=rb-4.1.0&q=85')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-      />
-      <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#D4AF37]/30 to-transparent" />
+      {/* soft background */}
+      <div className="absolute inset-0 bg-soft-grid opacity-50 pointer-events-none" />
+      <div className="absolute top-0 right-0 w-[600px] h-[600px] -translate-y-1/3 translate-x-1/4 bg-[#EDE7FE] rounded-full blur-[120px] opacity-50 pointer-events-none" />
+      <div className="absolute top-1/2 left-0 w-[500px] h-[500px] -translate-y-1/2 -translate-x-1/3 bg-[#E6F4C2] rounded-full blur-[120px] opacity-40 pointer-events-none" />
 
-      <div className="relative max-w-7xl mx-auto px-6 lg:px-10 grid lg:grid-cols-12 gap-12 items-center">
-        {/* Left: copy */}
-        <div className="lg:col-span-7 animate-fade-up">
-          <div className="inline-flex items-center gap-3 mb-8">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full rounded-full bg-[#00C9A7] pulse-dot" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00C9A7]" />
+      <div className="relative max-w-7xl mx-auto px-5 lg:px-8 grid lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+        {/* Left — copy */}
+        <div className="lg:col-span-6 animate-fade-up">
+          <a
+            href="#products"
+            className="inline-flex items-center gap-2 bg-white border border-[#ECECEA] rounded-full pl-1 pr-4 py-1 text-sm font-medium text-[#1F2024] hover:bg-[#F5F5F2] transition-colors"
+            data-testid="hero-eyebrow"
+          >
+            <span className="inline-flex items-center gap-1.5 bg-[#0F0F12] text-white rounded-full px-2.5 py-1 text-xs">
+              <span className="w-1.5 h-1.5 bg-[#B4E04C] rounded-full pulse-soft" />
+              Live
             </span>
-            <span className="font-mono text-[11px] tracking-[0.42em] text-[#00C9A7] uppercase">
-              Now Live · The Sport Of Trading
-            </span>
-          </div>
+            <span>1,287 traders competing right now</span>
+            <ArrowUpRight className="w-3.5 h-3.5 text-[#6B7280]" />
+          </a>
 
           <h1
-            className="font-display font-black tracking-tight text-white text-[44px] sm:text-6xl lg:text-7xl leading-[0.95] uppercase"
             data-testid="hero-headline"
+            className="mt-6 text-[44px] sm:text-6xl lg:text-[72px] leading-[1.02] tracking-[-0.02em] font-bold text-[#0F0F12]"
           >
-            Ain't you tired of trading
-            <span className="block mt-2">
-              against the{" "}
-              <span className="text-[#FF4C6A] line-through decoration-[3px] decoration-[#FF4C6A]/70">
-                broker
-              </span>
-              ?
+            Trade against{" "}
+            <span className="relative inline-block">
+              <span className="relative z-10">real people.</span>
+              <span className="absolute -bottom-1 left-0 right-0 h-3 bg-[#B4E04C] -z-0 rounded-sm" />
             </span>
+            <br />
+            Not the broker.
           </h1>
 
-          <p className="mt-8 max-w-2xl text-lg lg:text-xl text-[#94A3B8] leading-relaxed font-light">
-            Trade against <span className="text-white font-medium">real people</span>. Win real money. Welcome to the sport of trading.
-          </p>
-          <p className="mt-4 max-w-2xl text-[15px] text-[#94A3B8]/80 leading-relaxed">
-            THE SELECT TRADERS gives traders a third option. No more fighting the market alone. No more prop firm gatekeeping. Now you compete peer-to-peer — equal accounts, same market, same clock. The best trader wins.
+          <p className="mt-6 max-w-xl text-lg text-[#4B5563] leading-relaxed">
+            The Select Traders is a peer-to-peer competitive trading platform — equal accounts, same market, same clock. Win real money against real traders.
           </p>
 
-          <div className="mt-10 flex flex-wrap items-center gap-4">
+          <div className="mt-9 flex flex-wrap items-center gap-3">
             <button
               data-testid="hero-cta-primary"
-              className="group inline-flex items-center gap-3 bg-[#D4AF37] text-[#0A0E1A] font-display font-bold uppercase tracking-[0.18em] text-sm px-7 py-4 hover:bg-white hover:shadow-[0_0_30px_rgba(212,175,55,0.5)] transition-all"
+              className="group inline-flex items-center gap-2 bg-[#0F0F12] text-white font-medium text-[15px] px-6 py-3.5 rounded-full hover:bg-[#1F2024] transition-all hover:-translate-y-0.5"
             >
-              Start Competing
-              <ArrowUpRight className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+              Start competing
+              <span className="grid place-items-center w-5 h-5 bg-[#B4E04C] rounded-full text-[#0F0F12]">
+                <ArrowUpRight className="w-3 h-3" strokeWidth={2.5} />
+              </span>
             </button>
             <button
               data-testid="hero-cta-secondary"
-              onClick={() =>
-                document.getElementById("ticker")?.scrollIntoView({ behavior: "smooth" })
-              }
-              className="group inline-flex items-center gap-3 border border-white/20 text-white font-display font-bold uppercase tracking-[0.18em] text-sm px-7 py-4 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all"
+              onClick={() => document.getElementById("ticker")?.scrollIntoView({ behavior: "smooth" })}
+              className="group inline-flex items-center gap-2 bg-white border border-[#ECECEA] text-[#0F0F12] font-medium text-[15px] px-6 py-3.5 rounded-full hover:bg-[#F5F5F2] transition-all"
             >
-              <Play className="w-4 h-4" /> Watch a Live Duel
+              <Play className="w-3.5 h-3.5 fill-current" /> Watch a live duel
             </button>
           </div>
 
-          {/* Stat pills */}
-          <div className="mt-14 grid grid-cols-3 gap-3 sm:gap-6 max-w-2xl">
-            {[
-              { icon: Users, value: "12,400+", label: "Traders" },
-              { icon: TrendingUp, value: "$2.1M+", label: "Paid Out" },
-              { icon: Globe2, value: "47", label: "Countries" },
-            ].map((s) => (
-              <div
-                key={s.label}
-                className="border border-white/10 bg-[#0F1628]/60 backdrop-blur-sm p-4 flex items-center gap-3"
-                data-testid={`hero-stat-${s.label.toLowerCase()}`}
-              >
-                <s.icon className="w-5 h-5 text-[#D4AF37] shrink-0" />
-                <div className="leading-tight">
-                  <div className="font-mono text-lg font-bold text-white">{s.value}</div>
-                  <div className="font-mono text-[10px] tracking-[0.25em] uppercase text-[#94A3B8]">
-                    {s.label}
-                  </div>
-                </div>
+          {/* Social proof */}
+          <div className="mt-12 flex items-center gap-6">
+            <div className="flex -space-x-2">
+              {["F", "K", "M", "S"].map((c, i) => (
+                <span
+                  key={i}
+                  className="w-9 h-9 rounded-full ring-2 ring-[#FAFAF7] grid place-items-center text-xs font-bold text-white"
+                  style={{ background: ["#A78BFA", "#0F0F12", "#B4E04C", "#1F2024"][i], color: i === 2 ? "#0F0F12" : "#fff" }}
+                >
+                  {c}
+                </span>
+              ))}
+            </div>
+            <div>
+              <div className="font-mono text-sm font-medium text-[#0F0F12]">
+                12,400+ traders
               </div>
-            ))}
+              <div className="text-xs text-[#6B7280]">$2.1M paid out · 47 countries</div>
+            </div>
           </div>
         </div>
 
-        {/* Right: live duel preview */}
-        <div className="lg:col-span-5 animate-fade-up" style={{ animationDelay: "200ms" }}>
-          <div className="relative border border-[#D4AF37]/30 bg-[#0F1628]/70 backdrop-blur-xl p-6 gold-glow">
-            <div className="absolute -top-3 left-6 px-3 py-1 bg-[#0A0E1A] border border-[#FF4C6A]/50">
-              <span className="font-mono text-[10px] tracking-[0.32em] uppercase text-[#FF4C6A] flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-[#FF4C6A] rounded-full pulse-dot" />
-                Live · Duel #4781
-              </span>
+        {/* Right — Duel preview UI mockup */}
+        <div
+          className="lg:col-span-6 animate-fade-up"
+          style={{ animationDelay: "150ms" }}
+          data-testid="hero-mockup"
+        >
+          <div className="relative">
+            {/* purple accent card behind */}
+            <div className="absolute -top-6 -right-4 w-44 h-44 bg-[#A78BFA] rounded-3xl rotate-6 opacity-20" />
+            <div className="absolute -bottom-6 -left-4 w-32 h-32 bg-[#B4E04C] rounded-3xl -rotate-6 opacity-30" />
+
+            <div className="relative bg-white border border-[#ECECEA] rounded-3xl p-5 lg:p-6 shadow-[0_24px_64px_-24px_rgba(15,15,18,0.18)]">
+              {/* header */}
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#F5F5F2] grid place-items-center overflow-hidden">
+                    <img src={ICON_PURPLE} alt="" className="w-full h-full object-cover" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-mono text-[#6B7280]">Duel · #4781</div>
+                    <div className="text-sm font-semibold text-[#0F0F12]">$100,000 Account</div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs font-mono text-[#6B7280]">Time left</div>
+                  <div className="font-mono text-base font-semibold text-[#0F0F12]">03:42:11</div>
+                </div>
+              </div>
+
+              {/* chart */}
+              <div className="mt-5 h-44 rounded-2xl bg-[#FAFAF7] border border-[#F1F1EF] p-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={a.map((d, i) => ({ i, a: d.v, b: b[i]?.v }))} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="ga" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#10B981" stopOpacity={0.35} />
+                        <stop offset="100%" stopColor="#10B981" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="gb" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#A78BFA" stopOpacity={0.3} />
+                        <stop offset="100%" stopColor="#A78BFA" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <YAxis hide domain={["dataMin - 3", "dataMax + 3"]} />
+                    <Area type="monotone" dataKey="a" stroke="#10B981" strokeWidth={2.2} fill="url(#ga)" isAnimationActive={false} />
+                    <Area type="monotone" dataKey="b" stroke="#A78BFA" strokeWidth={2.2} fill="url(#gb)" isAnimationActive={false} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* traders */}
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="rounded-2xl border border-[#ECECEA] p-3.5">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 bg-[#10B981] rounded-full" />
+                    <span className="text-[13px] font-medium text-[#0F0F12]">@TradeFury</span>
+                  </div>
+                  <div className="mt-2 font-mono text-2xl font-semibold text-[#10B981] tracking-tight flex items-center gap-1">
+                    <Up className="w-4 h-4" strokeWidth={2.5} />
+                    +${pnlA.toLocaleString()}
+                  </div>
+                  <div className="mt-1 text-xs font-mono text-[#6B7280]">
+                    Equity ${(100000 + pnlA).toLocaleString()}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-[#ECECEA] p-3.5">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 bg-[#A78BFA] rounded-full" />
+                    <span className="text-[13px] font-medium text-[#0F0F12]">@GoldHands</span>
+                  </div>
+                  <div className={`mt-2 font-mono text-2xl font-semibold tracking-tight flex items-center gap-1 ${pnlB >= 0 ? "text-[#10B981]" : "text-[#EF4444]"}`}>
+                    {pnlB >= 0 ? <Up className="w-4 h-4" strokeWidth={2.5} /> : <Down className="w-4 h-4" strokeWidth={2.5} />}
+                    {pnlB >= 0 ? "+" : "−"}${Math.abs(pnlB).toLocaleString()}
+                  </div>
+                  <div className="mt-1 text-xs font-mono text-[#6B7280]">
+                    Equity ${(100000 + pnlB).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-center justify-between border-t border-[#F1F1EF] pt-4">
+                <div className="flex items-center gap-2 text-xs text-[#6B7280]">
+                  <span className="w-1.5 h-1.5 bg-[#EF4444] rounded-full pulse-soft" />
+                  <span className="font-mono">247 spectating</span>
+                </div>
+                <button className="inline-flex items-center gap-1 text-xs font-medium text-[#0F0F12] hover:gap-2 transition-all">
+                  Spectate <ArrowUpRight className="w-3 h-3" />
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-center justify-between mt-2">
+            {/* floating stat */}
+            <div className="hidden md:flex absolute -left-6 bottom-10 items-center gap-3 bg-white border border-[#ECECEA] rounded-2xl px-4 py-3 shadow-[0_12px_24px_-8px_rgba(15,15,18,0.12)]">
+              <div className="w-9 h-9 rounded-xl bg-[#E6F4C2] grid place-items-center">
+                <Up className="w-4 h-4 text-[#0F0F12]" strokeWidth={2.5} />
+              </div>
               <div>
-                <div className="font-mono text-[10px] tracking-[0.28em] uppercase text-[#94A3B8]">
-                  Account
-                </div>
-                <div className="font-mono text-xl font-bold text-white">$100,000</div>
+                <div className="text-xs text-[#6B7280] font-medium">Avg. winner ROI</div>
+                <div className="font-mono text-base font-semibold text-[#0F0F12]">+18.4%</div>
               </div>
-              <div className="text-right">
-                <div className="font-mono text-[10px] tracking-[0.28em] uppercase text-[#94A3B8]">
-                  Time Left
-                </div>
-                <div className="font-mono text-xl font-bold text-[#D4AF37]">03:42:11</div>
-              </div>
-            </div>
-
-            <div className="my-6 h-44">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data} margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="ga" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#00E676" stopOpacity={0.4} />
-                      <stop offset="100%" stopColor="#00E676" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="gb" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#FF4C6A" stopOpacity={0.35} />
-                      <stop offset="100%" stopColor="#FF4C6A" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="2 4" stroke="#1E2A45" />
-                  <YAxis hide domain={["dataMin - 5", "dataMax + 5"]} />
-                  <Area
-                    type="monotone"
-                    dataKey="a"
-                    stroke="#00E676"
-                    strokeWidth={2}
-                    fill="url(#ga)"
-                    isAnimationActive={false}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="b"
-                    stroke="#FF4C6A"
-                    strokeWidth={2}
-                    fill="url(#gb)"
-                    isAnimationActive={false}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="border border-white/10 p-4">
-                <div className="font-mono text-[10px] tracking-[0.28em] uppercase text-[#94A3B8]">
-                  @TradeFury
-                </div>
-                <div className="mt-2 font-mono text-2xl font-bold text-[#00E676]">
-                  +$2,847
-                </div>
-                <div className="mt-1 font-mono text-[11px] text-[#94A3B8]">Equity $102,847</div>
-              </div>
-              <div className="border border-white/10 p-4">
-                <div className="font-mono text-[10px] tracking-[0.28em] uppercase text-[#94A3B8]">
-                  @GoldHands
-                </div>
-                <div className="mt-2 font-mono text-2xl font-bold text-[#FF4C6A]">
-                  −$1,600
-                </div>
-                <div className="mt-1 font-mono text-[11px] text-[#94A3B8]">Equity $98,400</div>
-              </div>
-            </div>
-
-            <div className="mt-5 flex items-center justify-between">
-              <span className="font-mono text-[11px] text-[#94A3B8] flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-[#00C9A7] rounded-full pulse-dot" />
-                247 spectating
-              </span>
-              <button className="font-mono text-[11px] tracking-[0.28em] uppercase text-[#D4AF37] hover:text-white">
-                Spectate →
-              </button>
             </div>
           </div>
         </div>
