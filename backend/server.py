@@ -1,89 +1,710 @@
-from fastapi import FastAPI, APIRouter
-from dotenv import load_dotenv
-from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
-import os
-import logging
-from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List
-import uuid
-from datetime import datetime, timezone
+"""THE SELECT TRADERS — Mock backend API.
 
+All endpoints under /api. Mongo persistence. Mock auth via X-User-Id header
+(defaults to the seeded demo user @TradeFury). Live data simulated deterministically
+on read — no background tasks needed.
+"""
+import asyncio
+import logging
+import os
+import random
+from datetime import datetime, timedelta, timezone
+from typing import List, Optional
+
+from dotenv import load_dotenv
+from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException
+from pathlib import Path
+from pydantic import BaseModel
+from starlette.middleware.cors import CORSMiddleware
+
+import database as db
+from models import (
+    CreateCustomDuelInput, CreateTeamInput, DepositInput, Duel, DuelRules, DuelView,
+    LinkedAccount, Notification, RoyaleLobby, RoyaleLobbyView, SpawnEntry, Team, Tournament,
+    Transaction, User, UserPublic, UserUpdate, WithdrawInput, CommunitySignup,
+)
+import seed
+from simulator import (
+    compute_duel_pnl, compute_earnings_trend, compute_equity_series, compute_royale_leaderboard,
+    compute_spectators, compute_starts_in,
+)
 
 ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+load_dotenv(ROOT_DIR / ".env")
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+app = FastAPI(title="The Select Traders API")
+api = APIRouter(prefix="/api")
 
-# Create the main app without a prefix
-app = FastAPI()
-
-# Create a router with the /api prefix
-api_router = APIRouter(prefix="/api")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
 
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
-    
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+def _now():
+    return datetime.now(timezone.utc)
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
 
-# Add your routes to the router instead of directly to app
-@api_router.get("/")
+def _iso(dt):
+    if isinstance(dt, str):
+        return dt
+    return dt.isoformat()
+
+
+# ---------- Auth (mock) ----------
+
+DEFAULT_USERNAME = "TradeFury"
+
+
+async def get_current_user(x_user_id: Optional[str] = Header(default=None),
+    x_username: Optional[str] = Header(default=None),
+) -> dict:
+    """Resolve current user from X-User-Id or X-Username header.
+    Defaults to @TradeFury (seeded demo user).
+    """
+    if x_user_id:
+        u = await db.find_one(db.users(), {"id": x_user_id})
+        if u:
+            return u
+    if x_username:
+        u = await db.find_one(db.users(), {"username": x_username})
+        if u:
+            return u
+    u = await db.find_one(db.users(), {"username": DEFAULT_USERNAME})
+    if not u:
+        raise HTTPException(status_code=503, detail="System not seeded yet")
+    return u
+
+
+CurrentUser = Depends(get_current_user)
+
+
+# ---------- Helpers ----------
+
+async def _users_by_id(ids: List[str]) -> dict:
+    if not ids:
+        return {}
+    docs = await db.users().find({"id": {"$in": ids}}, db.PROJECTION_NO_ID).to_list(length=len(ids))
+    return {u["id"]: u for u in docs}
+
+
+def _public(u: dict) -> UserPublic:
+    return UserPublic(
+        id=u["id"], username=u["username"],
+        avatar_initial=u["username"][0].upper(),
+        tier=u.get("tier", "Bronze"), plan=u.get("plan", "FREE"),
+    )
+
+
+def _serialize_duel(d: dict, users_map: dict, viewer_id: str) -> DuelView:
+    pnl_a, pnl_b, time_left = compute_duel_pnl(d)
+    ta = users_map.get(d.get("trader_a_id"))
+    tb = users_map.get(d.get("trader_b_id"))
+    return DuelView(
+        id=d["id"],
+        type=d["type"],
+        trader_a=_public(ta) if ta else None,
+        trader_b=_public(tb) if tb else None,
+        account_size=d["account_size"],
+        entry_fee=d["entry_fee"],
+        prize=d["prize"],
+        status=d["status"],
+        pnl_a=pnl_a,
+        pnl_b=pnl_b,
+        time_left_seconds=time_left,
+        spectators=compute_spectators(d),
+        rules=DuelRules(**d.get("rules", {})),
+        custom=d["type"] == "custom",
+        is_yours=(d.get("trader_a_id") == viewer_id or d.get("trader_b_id") == viewer_id),
+    )
+
+
+async def _insert(coll, model: BaseModel):
+    """Insert a Pydantic model, converting datetimes to ISO strings."""
+    doc = model.model_dump()
+    for k, v in list(doc.items()):
+        if isinstance(v, datetime):
+            doc[k] = v.isoformat()
+    await coll.insert_one(doc)
+    return doc
+
+
+# ============================================================
+# Health & Stats
+# ============================================================
+
+@api.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"name": "The Select Traders API", "status": "ok"}
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
-    
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
-    
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
-    
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
-    
-    return status_checks
+@api.get("/stats/live")
+async def stats_live():
+    traders = await db.users().count_documents({})
+    live_matches = await db.duels().count_documents({"status": "live"})
+    paid_out_agg = await db.transactions().aggregate([
+        {"$match": {"type": "Prize"}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount"}}},
+    ]).to_list(length=1)
+    paid_out = paid_out_agg[0]["total"] if paid_out_agg else 0
+    countries = len(await db.users().distinct("country"))
+    return {
+        "traders": traders + 12388,  # boost for demo plausibility
+        "paid_out": round(paid_out + 2_100_000, 2),
+        "countries": max(countries, 47),
+        "live_matches": live_matches,
+    }
 
-# Include the router in the main app
-app.include_router(api_router)
+
+# ============================================================
+# User / Me
+# ============================================================
+
+@api.get("/me")
+async def get_me(me: dict = CurrentUser):
+    me.pop("created_at", None)
+    return me
+
+
+@api.patch("/me")
+async def update_me(payload: UserUpdate, me: dict = CurrentUser):
+    updates = {k: v for k, v in payload.model_dump().items() if v is not None}
+    if not updates:
+        return me
+    await db.users().update_one({"id": me["id"]}, {"$set": updates})
+    return await db.find_one(db.users(), {"id": me["id"]})
+
+
+@api.get("/me/stats")
+async def my_stats(me: dict = CurrentUser):
+    return {
+        "matches_played": me.get("matches_played", 0),
+        "wins": me.get("wins", 0),
+        "losses": me.get("losses", 0),
+        "win_rate": me.get("win_rate", 0),
+        "best_trade": me.get("best_trade", 0),
+        "worst_drawdown": me.get("worst_drawdown", 0),
+        "tier": me.get("tier", "Bronze"),
+        "global_rank": me.get("global_rank", 9999),
+        "win_streak": me.get("win_streak", 0),
+        "best_streak": me.get("best_streak", 0),
+        "earnings_trend": compute_earnings_trend(me),
+        "win_rate_by_format": [
+            {"name": "1v1 Duel", "value": 68},
+            {"name": "Royale", "value": 41},
+            {"name": "Multi Trader", "value": 55},
+            {"name": "Tag Team", "value": 72},
+        ],
+        "win_rate_by_market": [
+            {"name": "Forex", "value": 64},
+            {"name": "Crypto", "value": 58},
+            {"name": "Stocks", "value": 71},
+            {"name": "Commodities", "value": 52},
+        ],
+    }
+
+
+# ============================================================
+# Dashboard
+# ============================================================
+
+@api.get("/dashboard")
+async def dashboard(me: dict = CurrentUser):
+
+    # Live duels
+    duel_docs = await db.find_many(db.duels(), {"status": "live"}, sort=[("started_at", -1)], limit=8)
+    user_ids = set()
+    for d in duel_docs:
+        if d.get("trader_a_id"): user_ids.add(d["trader_a_id"])
+        if d.get("trader_b_id"): user_ids.add(d["trader_b_id"])
+    users_map = await _users_by_id(list(user_ids))
+    live = [_serialize_duel(d, users_map, me["id"]) for d in duel_docs]
+
+    my_active = next((d for d in live if d.is_yours), None)
+
+    # Upcoming tournaments
+    tournaments = await db.find_many(db.tournaments(), {"stage": {"$ne": "Completed"}}, limit=3)
+    upcoming = [{
+        "id": t["id"], "name": t["name"], "registered": len(t.get("registered_ids", [])),
+        "capacity": t["capacity"], "start_date": t["start_date"], "prize_pool": t["prize_pool"], "stage": t["stage"],
+    } for t in tournaments]
+
+    # Recent results
+    results = await db.find_many(db.match_results(), {"user_id": me["id"]},
+                                 sort=[("created_at", -1)], limit=5)
+
+    trend = compute_earnings_trend(me)
+    earnings_total = trend[-1]["earnings"] if trend else 0
+
+    return {
+        "user": {
+            "id": me["id"], "username": me["username"], "plan": me["plan"],
+            "tier": me["tier"], "global_rank": me["global_rank"],
+            "win_rate": me["win_rate"], "balance": me["balance"],
+            "lifetime_earned": me["lifetime_earned"], "win_streak": me.get("win_streak", 0),
+            "best_streak": me.get("best_streak", 0),
+        },
+        "earnings_trend": trend,
+        "earnings_total": earnings_total,
+        "live_matches": [d.model_dump() for d in live],
+        "my_active_match": my_active.model_dump() if my_active else None,
+        "upcoming_tournaments": upcoming,
+        "recent_results": results,
+    }
+
+
+# ============================================================
+# Duels (1v1)
+# ============================================================
+
+@api.get("/duels/live")
+async def list_live_duels(me: dict = CurrentUser):
+    docs = await db.find_many(db.duels(), {"status": "live"}, sort=[("started_at", -1)])
+    user_ids = {d.get("trader_a_id") for d in docs} | {d.get("trader_b_id") for d in docs}
+    user_ids.discard(None)
+    users_map = await _users_by_id(list(user_ids))
+    return [_serialize_duel(d, users_map, me["id"]).model_dump() for d in docs]
+
+
+@api.get("/duels/{duel_id}")
+async def get_duel(duel_id: str, me: dict = CurrentUser):
+    d = await db.find_one(db.duels(), {"id": duel_id})
+    if not d:
+        raise HTTPException(status_code=404, detail="Duel not found")
+    user_ids = [d.get("trader_a_id"), d.get("trader_b_id")]
+    users_map = await _users_by_id([uid for uid in user_ids if uid])
+    view = _serialize_duel(d, users_map, me["id"])
+    series = compute_equity_series(d, points=40)
+    return {**view.model_dump(), "equity_series": series}
+
+
+@api.post("/duels/spawn")
+async def spawn_join(payload: dict, me: dict = CurrentUser):
+    """Join the spawn queue for an account size. Simulates instant pairing for demo."""
+    account_size = int(payload.get("account_size", 5000))
+
+    # Find entry fee + prize from tier
+    tiers = {5000: (60, 100), 10000: (125, 200), 25000: (280, 500), 50000: (550, 1000),
+             100000: (1100, 2000), 250000: (2800, 5000), 500000: (5500, 10000), 1000000: (11000, 20000)}
+    if account_size not in tiers:
+        raise HTTPException(status_code=400, detail="Invalid account size")
+    entry_fee, prize = tiers[account_size]
+
+    # Pick a random opponent (not current user, excluding active duel participants)
+    candidates = await db.find_many(db.users(), {"id": {"$ne": me["id"]}}, limit=20)
+    opponent = random.choice(candidates) if candidates else None
+    if not opponent:
+        raise HTTPException(status_code=409, detail="No opponent available")
+
+    # Create a live duel
+    duration_hours = 24 if account_size >= 50000 else 4
+    started = _now()
+    duel = Duel(
+        type="standard",
+        trader_a_id=me["id"],
+        trader_b_id=opponent["id"],
+        account_size=account_size,
+        entry_fee=entry_fee,
+        prize=prize,
+        status="live",
+        started_at=started,
+        ends_at=started + timedelta(hours=duration_hours),
+        spectator_base=random.randint(20, 80),
+        rules=DuelRules(timeline=f"{duration_hours}h"),
+    )
+    await _insert(db.duels(), duel)
+
+    # Record entry fee transaction + notification
+    tx = Transaction(user_id=me["id"], type="Entry Fee", amount=-entry_fee,
+                     reference=f"Duel {duel.id}", status="completed")
+    await _insert(db.transactions(), tx)
+
+    notif = Notification(user_id=me["id"], type="pair", title="Opponent found",
+                         body=f"You've been paired with @{opponent['username']} for a ${account_size:,} duel.")
+    await _insert(db.notifications(), notif)
+
+    return {
+        "duel_id": duel.id,
+        "opponent_username": opponent["username"],
+        "account_size": account_size,
+        "entry_fee": entry_fee,
+        "prize": prize,
+    }
+
+
+@api.post("/duels/custom")
+async def create_custom_duel(payload: CreateCustomDuelInput, me: dict = CurrentUser):
+    if me["plan"] != "PRO":
+        raise HTTPException(status_code=403, detail="Creating custom duels requires a Pro plan")
+
+    # Calculate hours from timeline string like "24h", "4h"
+    timeline_hours = {"1h": 1, "4h": 4, "24h": 24, "36h": 36, "48h": 48, "72h": 72}.get(payload.timeline, 24)
+    started = _now()
+    duel = Duel(
+        type="custom",
+        trader_a_id=me["id"],
+        creator_id=me["id"],
+        account_size=payload.account_size,
+        entry_fee=payload.entry_fee,
+        prize=payload.entry_fee * 2,  # 2x return for custom (could be configurable)
+        status="pairing",
+        started_at=started,
+        ends_at=started + timedelta(hours=timeline_hours),
+        spectator_base=random.randint(20, 60),
+        rules=DuelRules(
+            leverage=payload.leverage, daily_dd=payload.daily_dd, max_dd=payload.max_dd,
+            instruments=payload.instruments, account_type=payload.account_type,
+            spread_type=payload.spread_type, timeline=payload.timeline,
+        ),
+    )
+    await _insert(db.duels(), duel)
+    return {"duel_id": duel.id, "status": "pairing"}
+
+
+# ============================================================
+# Royale lobbies
+# ============================================================
+
+@api.get("/royale/lobbies")
+async def list_lobbies(size: Optional[int] = None, timeline: Optional[str] = None, me: dict = CurrentUser):
+    filt = {"status": {"$ne": "completed"}}
+    if size:
+        filt["size"] = size
+    if timeline:
+        filt["timeline"] = timeline
+    docs = await db.find_many(db.royale_lobbies(), filt)
+    out = []
+    for l in docs:
+        joined = len(l.get("participant_ids", []))
+        pool = int(l["size"] * l["entry_fee"] * 0.85)
+        out.append(RoyaleLobbyView(
+            id=l["id"], size=l["size"], joined=joined, timeline=l["timeline"],
+            entry_fee=l["entry_fee"], prize_pool=pool, status=l["status"],
+            starts_in=compute_starts_in(l),
+            is_in=me["id"] in l.get("participant_ids", []),
+        ).model_dump())
+    return out
+
+
+@api.get("/royale/lobbies/{lobby_id}")
+async def get_lobby(lobby_id: str, me: dict = CurrentUser):
+    l = await db.find_one(db.royale_lobbies(), {"id": lobby_id})
+    if not l:
+        raise HTTPException(status_code=404, detail="Lobby not found")
+    participants = await _users_by_id(l.get("participant_ids", []))
+    public_users = [_public(u).model_dump() for u in participants.values()]
+    leaderboard = compute_royale_leaderboard(l, public_users) if l["status"] in ("live", "starting") else []
+
+    # time left
+    time_left = None
+    if l.get("ends_at"):
+        ends_at = l["ends_at"]
+        if isinstance(ends_at, str):
+            ends_at = datetime.fromisoformat(ends_at)
+        time_left = max(0, int((ends_at - _now()).total_seconds()))
+
+    return {
+        "id": l["id"], "size": l["size"], "timeline": l["timeline"],
+        "joined": len(l.get("participant_ids", [])),
+        "entry_fee": l["entry_fee"], "status": l["status"],
+        "prize_pool": int(l["size"] * l["entry_fee"] * 0.85),
+        "starts_in": compute_starts_in(l),
+        "time_left_seconds": time_left,
+        "leaderboard": leaderboard,
+        "is_in": me["id"] in l.get("participant_ids", []),
+    }
+
+
+@api.post("/royale/lobbies/{lobby_id}/join")
+async def join_lobby(lobby_id: str, me: dict = CurrentUser):
+    l = await db.find_one(db.royale_lobbies(), {"id": lobby_id})
+    if not l:
+        raise HTTPException(status_code=404, detail="Lobby not found")
+    if me["id"] in l.get("participant_ids", []):
+        raise HTTPException(status_code=409, detail="Already in this lobby")
+    if len(l.get("participant_ids", [])) >= l["size"]:
+        raise HTTPException(status_code=409, detail="Lobby is full")
+    await db.royale_lobbies().update_one(
+        {"id": lobby_id},
+        {"$push": {"participant_ids": me["id"]}},
+    )
+    # entry fee
+    tx = Transaction(user_id=me["id"], type="Entry Fee", amount=-l["entry_fee"],
+                     reference=f"Royale {lobby_id}", status="completed")
+    await _insert(db.transactions(), tx)
+    return {"ok": True, "lobby_id": lobby_id}
+
+
+# ============================================================
+# Tournaments (Multi Trader)
+# ============================================================
+
+@api.get("/tournaments")
+async def list_tournaments(me: dict = CurrentUser):
+    docs = await db.find_many(db.tournaments(), {"stage": {"$ne": "Completed"}})
+    return [{
+        "id": t["id"], "name": t["name"],
+        "registered": len(t.get("registered_ids", [])),
+        "capacity": t["capacity"], "start_date": t["start_date"],
+        "prize_pool": t["prize_pool"], "stage": t["stage"],
+        "is_registered": me["id"] in t.get("registered_ids", []),
+    } for t in docs]
+
+
+@api.get("/tournaments/{tournament_id}")
+async def get_tournament(tournament_id: str, me: dict = CurrentUser):
+    t = await db.find_one(db.tournaments(), {"id": tournament_id})
+    if not t:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+
+    # hydrate group rows with usernames
+    user_ids = set()
+    for g in t.get("groups", []):
+        for r in g.get("rows", []):
+            if r.get("user_id"):
+                user_ids.add(r["user_id"])
+    users_map = await _users_by_id(list(user_ids))
+    for g in t.get("groups", []):
+        for r in g.get("rows", []):
+            uid = r.get("user_id")
+            u = users_map.get(uid) if uid else None
+            r["username"] = u["username"] if u else "Unknown"
+            r["is_you"] = uid == me["id"]
+    return {
+        **t,
+        "is_registered": me["id"] in t.get("registered_ids", []),
+        "prize_distribution": [
+            {"stage": "Round of 16 qualifiers", "share": 25, "amount": int(t["prize_pool"] * 0.25)},
+            {"stage": "Quarter-final qualifiers", "share": 25, "amount": int(t["prize_pool"] * 0.25)},
+            {"stage": "Semi-finalists", "share": 20, "amount": int(t["prize_pool"] * 0.20)},
+            {"stage": "Runner-up", "share": 15, "amount": int(t["prize_pool"] * 0.15)},
+            {"stage": "Champion", "share": 15, "amount": int(t["prize_pool"] * 0.15)},
+        ],
+    }
+
+
+@api.post("/tournaments/{tournament_id}/register")
+async def register_tournament(tournament_id: str, me: dict = CurrentUser):
+    t = await db.find_one(db.tournaments(), {"id": tournament_id})
+    if not t:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+    if me["id"] in t.get("registered_ids", []):
+        raise HTTPException(status_code=409, detail="Already registered")
+    if len(t.get("registered_ids", [])) >= t["capacity"]:
+        raise HTTPException(status_code=409, detail="Tournament full")
+    await db.tournaments().update_one(
+        {"id": tournament_id},
+        {"$push": {"registered_ids": me["id"]}},
+    )
+    notif = Notification(user_id=me["id"], type="tournament",
+                         title="Registered for tournament",
+                         body=f"You're in: {t['name']}. Starts {t['start_date']}.")
+    await _insert(db.notifications(), notif)
+    return {"ok": True}
+
+
+# ============================================================
+# Teams (Tag Team)
+# ============================================================
+
+@api.get("/teams")
+async def list_teams(me: dict = CurrentUser):
+    docs = await db.find_many(db.teams(), {"member_ids": me["id"]})
+    out = []
+    for t in docs:
+        members = await _users_by_id(t.get("member_ids", []))
+        captain = members.get(t.get("captain_id"))
+        out.append({
+            "id": t["id"], "name": t["name"], "format": t["format"],
+            "total_account": t["total_account"], "splits": t["splits"],
+            "role": "Captain" if t.get("captain_id") == me["id"] else "Member",
+            "members": [members[mid]["username"] for mid in t.get("member_ids", []) if mid in members],
+            "wins": t.get("wins", 0), "losses": t.get("losses", 0),
+            "record": f"{t.get('wins', 0)}-{t.get('losses', 0)}",
+        })
+    return out
+
+
+@api.post("/teams")
+async def create_team(payload: CreateTeamInput, me: dict = CurrentUser):
+    if me["plan"] != "PRO":
+        raise HTTPException(status_code=403, detail="Creating a team requires a Pro plan")
+
+    expected_slots = 3 if payload.format == "3v3" else 5
+    if len(payload.splits) != expected_slots:
+        raise HTTPException(status_code=400, detail=f"Need exactly {expected_slots} splits for {payload.format}")
+    if sum(payload.splits) != payload.total_account:
+        raise HTTPException(status_code=400,
+                            detail=f"Splits must sum to ${payload.total_account:,}, got ${sum(payload.splits):,}")
+    if len(payload.name) < 2:
+        raise HTTPException(status_code=400, detail="Team name too short")
+
+    # invite by username — find members that exist
+    members = [me["id"]]
+    for uname in payload.member_usernames:
+        u = await db.find_one(db.users(), {"username": uname.lstrip("@")})
+        if u and u["id"] not in members:
+            members.append(u["id"])
+
+    team = Team(name=payload.name, format=payload.format, captain_id=me["id"],
+                member_ids=members[:expected_slots], splits=payload.splits,
+                total_account=payload.total_account)
+    await _insert(db.teams(), team)
+    return {"id": team.id, "name": team.name, "members_invited": len(payload.member_usernames)}
+
+
+# ============================================================
+# Wallet
+# ============================================================
+
+@api.get("/wallet")
+async def wallet_summary(me: dict = CurrentUser):
+    return {
+        "balance": me["balance"],
+        "pending": me["pending"],
+        "lifetime_earned": me["lifetime_earned"],
+        "kyc_status": me.get("kyc_status", "not_started"),
+    }
+
+
+@api.post("/wallet/deposit")
+async def deposit(payload: DepositInput, me: dict = CurrentUser):
+    if payload.amount < 10:
+        raise HTTPException(status_code=400, detail="Minimum deposit is $10")
+    tx = Transaction(user_id=me["id"], type="Deposit", amount=payload.amount,
+                     status="completed",
+                     reference={
+                         "card": "Card •••4242", "bank": "Bank •••1184", "crypto": "USDT •••f7c2",
+                     }.get(payload.method, "—"))
+    await _insert(db.transactions(), tx)
+    await db.users().update_one({"id": me["id"]}, {"$inc": {"balance": payload.amount}})
+    return {"ok": True, "transaction_id": tx.id}
+
+
+@api.post("/wallet/withdraw")
+async def withdraw(payload: WithdrawInput, me: dict = CurrentUser):
+    if me.get("kyc_status") != "verified":
+        raise HTTPException(status_code=403, detail="Complete KYC before your first withdrawal")
+    if payload.amount < 10:
+        raise HTTPException(status_code=400, detail="Minimum withdrawal is $10")
+    if payload.amount > me["balance"]:
+        raise HTTPException(status_code=400, detail="Insufficient balance")
+    tx = Transaction(user_id=me["id"], type="Withdrawal", amount=-payload.amount,
+                     status="processing", reference="Bank •••1184")
+    await _insert(db.transactions(), tx)
+    await db.users().update_one({"id": me["id"]}, {"$inc": {"balance": -payload.amount}})
+    return {"ok": True, "transaction_id": tx.id}
+
+
+@api.get("/wallet/transactions")
+async def list_transactions(limit: int = 50, me: dict = CurrentUser):
+    return await db.find_many(db.transactions(), {"user_id": me["id"]},
+                              sort=[("created_at", -1)], limit=limit)
+
+
+# ============================================================
+# Notifications
+# ============================================================
+
+@api.get("/notifications")
+async def list_notifications(me: dict = CurrentUser):
+    return await db.find_many(db.notifications(), {"user_id": me["id"]},
+                              sort=[("created_at", -1)], limit=50)
+
+
+@api.post("/notifications/mark-all-read")
+async def mark_all_read(me: dict = CurrentUser):
+    await db.notifications().update_many({"user_id": me["id"]}, {"$set": {"unread": False}})
+    return {"ok": True}
+
+
+@api.post("/notifications/{notif_id}/read")
+async def mark_one_read(notif_id: str):
+    await db.notifications().update_one({"id": notif_id}, {"$set": {"unread": False}})
+    return {"ok": True}
+
+
+# ============================================================
+# Match history (My Stats)
+# ============================================================
+
+@api.get("/match-history")
+async def match_history(limit: int = 50, me: dict = CurrentUser):
+    return await db.find_many(db.match_results(), {"user_id": me["id"]},
+                              sort=[("created_at", -1)], limit=limit)
+
+
+# ============================================================
+# Settings — KYC, Linked accounts
+# ============================================================
+
+@api.post("/settings/kyc/upload")
+async def kyc_upload(me: dict = CurrentUser):
+    await db.users().update_one({"id": me["id"]}, {"$set": {"kyc_status": "pending"}})
+    return {"ok": True, "status": "pending"}
+
+
+@api.get("/settings/linked-accounts")
+async def list_linked(me: dict = CurrentUser):
+    return await db.find_many(db.linked_accounts(), {"user_id": me["id"]})
+
+
+@api.post("/settings/linked-accounts")
+async def add_linked(payload: dict, me: dict = CurrentUser):
+    la = LinkedAccount(
+        user_id=me["id"], label=payload.get("label", "Unnamed"),
+        type=payload.get("type", "Bank"), country=payload.get("country", "—"),
+    )
+    await _insert(db.linked_accounts(), la)
+    return la.model_dump()
+
+
+@api.delete("/settings/linked-accounts/{account_id}")
+async def remove_linked(account_id: str, me: dict = CurrentUser):
+    await db.linked_accounts().delete_one({"id": account_id, "user_id": me["id"]})
+    return {"ok": True}
+
+
+# ============================================================
+# Community waitlist
+# ============================================================
+
+@api.post("/community/notify")
+async def community_notify(payload: dict):
+    email = payload.get("email", "").strip().lower()
+    if "@" not in email or "." not in email:
+        raise HTTPException(status_code=400, detail="Invalid email")
+    existing = await db.find_one(db.community_signups(), {"email": email})
+    if existing:
+        return {"ok": True, "already": True}
+    s = CommunitySignup(email=email, source=payload.get("source", "landing"))
+    await _insert(db.community_signups(), s)
+    return {"ok": True, "already": False}
+
+
+# ============================================================
+# App lifecycle
+# ============================================================
+
+app.include_router(api)
 
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+
+@app.on_event("startup")
+async def on_startup():
+    try:
+        created = await seed.seed_all()
+        logger.info(f"Seed: {'created' if created else 'already populated'}")
+    except Exception as e:
+        logger.exception(f"Seed failed: {e}")
+
 
 @app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
+async def on_shutdown():
+    pass

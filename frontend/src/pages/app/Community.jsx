@@ -2,15 +2,24 @@ import { Globe, Mail } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import PageHeader from "@/components/app/PageHeader";
+import { communityNotify } from "@/lib/api";
 
 export default function Community() {
   const [email, setEmail] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
-    if (!email.includes("@")) return toast.error("Enter a valid email");
-    toast.success("You're on the list — we'll notify you at launch.");
-    setEmail("");
+    setSubmitting(true);
+    try {
+      const res = await communityNotify(email, "client_area");
+      toast.success(res.already ? "You're already on the list" : "You're on the list — we'll notify you at launch.");
+      setEmail("");
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -43,9 +52,9 @@ export default function Community() {
                   className="flex-1 bg-transparent text-white placeholder:text-white/40 text-sm focus:outline-none py-2"
                 />
               </div>
-              <button type="submit" className="bg-[#B4E04C] text-[#0F0F12] font-semibold text-sm px-5 rounded-xl hover:bg-white">
-                Notify me
-              </button>
+                <button type="submit" disabled={submitting} className="bg-[#B4E04C] text-[#0F0F12] font-semibold text-sm px-5 rounded-xl hover:bg-white disabled:opacity-50">
+                  {submitting ? "..." : "Notify me"}
+                </button>
             </div>
           </form>
         </div>

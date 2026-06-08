@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Swords, Crown, Trophy, Users, Globe, ArrowUpRight, Check } from "lucide-react";
 import { toast } from "sonner";
+import { communityNotify } from "@/lib/api";
 
 const duelTiers = [
   { size: "$5,000", entry: "$60", prize: "$100" },
@@ -88,15 +89,20 @@ function StatCard({ tone, label, value, sub }) {
 export default function ProductDeepDive() {
   const [email, setEmail] = useState("");
 
-  const submitEmail = (e) => {
+  const submitEmail = async (e) => {
     e.preventDefault();
     const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     if (!ok) {
       toast.error("Please enter a valid email");
       return;
     }
-    toast.success("You're on the list. We'll notify you at launch.");
-    setEmail("");
+    try {
+      const res = await communityNotify(email, "landing");
+      toast.success(res.already ? "You're already on the list" : "You're on the list. We'll notify you at launch.");
+      setEmail("");
+    } catch (err) {
+      toast.error(err.message);
+    }
   };
 
   return (
