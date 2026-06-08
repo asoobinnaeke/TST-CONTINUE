@@ -14,6 +14,15 @@ import Wallet from "@/pages/app/Wallet";
 import Settings from "@/pages/app/Settings";
 import Notifications from "@/pages/app/Notifications";
 import Match from "@/pages/app/Match";
+import AdminLayout from "@/components/admin/AdminLayout";
+import AdminLogin from "@/pages/admin/Login";
+import AdminOverview from "@/pages/admin/Overview";
+import AdminUsers from "@/pages/admin/Users";
+import AdminMatches from "@/pages/admin/Matches";
+import AdminFinance from "@/pages/admin/Finance";
+import AdminKyc from "@/pages/admin/Kyc";
+import AdminAudit from "@/pages/admin/Audit";
+import AdminCommunity from "@/pages/admin/Community";
 
 function App() {
   return (
@@ -33,6 +42,16 @@ function App() {
             <Route path="wallet" element={<Wallet />} />
             <Route path="settings" element={<Settings />} />
             <Route path="notifications" element={<Notifications />} />
+          </Route>
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminOverview />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="matches" element={<AdminMatches />} />
+            <Route path="finance" element={<AdminFinance />} />
+            <Route path="kyc" element={<AdminKyc />} />
+            <Route path="audit" element={<AdminAudit />} />
+            <Route path="community" element={<AdminCommunity />} />
           </Route>
         </Routes>
       </BrowserRouter>

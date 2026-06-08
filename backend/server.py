@@ -686,6 +686,238 @@ async def community_notify(payload: dict):
 
 app.include_router(api)
 
+
+# ============================================================
+# ADMIN API
+# ============================================================
+
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@selecttraders.com")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin-2026")
+ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "admin-secret-token-2026")
+
+admin = APIRouter(prefix="/api/admin")
+
+
+async def require_admin(authorization: Optional[str] = Header(default=None)):
+    expected = f"Bearer {ADMIN_TOKEN}"
+    if authorization != expected:
+        raise HTTPException(status_code=401, detail="Admin authentication required")
+    return True
+
+
+AdminAuth = Depends(require_admin)
+
+
+class AdminLogin(BaseModel):
+    email: str
+    password: str
+
+
+async def _audit(action: str, target: str = "", meta: dict = None):
+    await db.db().audit_log.insert_one({
+        "id": _uid_str(),
+        "action": action,
+        "target": target,
+        "meta": meta or {},
+        "created_at": _now().isoformat(),
+    })
+
+
+def _uid_str():
+    from uuid import uuid4 as _u
+    return str(_u())
+
+
+@admin.post("/login")
+async def admin_login(payload: AdminLogin):
+    if payload.email != ADMIN_EMAIL or payload.password != ADMIN_PASSWORD:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    await _audit("admin.login", target=payload.email)
+    return {"token": ADMIN_TOKEN, "email": ADMIN_EMAIL}
+
+
+@admin.get("/overview")
+async def admin_overview(_: bool = AdminAuth):
+    total_users = await db.users().count_documents({})
+    active_30d = total_users  # mock — all seeded users are "active"
+    live_matches = await db.duels().count_documents({"status": "live"})
+    pending_wds = await db.transactions().count_documents({"type": "Withdrawal", "status": "processing"})
+    pending_kyc = await db.users().count_documents({"kyc_status": "pending"})
+
+    rev_agg = await db.transactions().aggregate([
+        {"$match": {"type": {"$in": ["Entry Fee", "Subscription"]}}},
+        {"$group": {"_id": None, "total": {"$sum": {"$abs": "$amount"}}}},
+    ]).to_list(length=1)
+    revenue_mtd = rev_agg[0]["total"] if rev_agg else 0
+
+    # daily registrations (mock — derive from created_at)
+    users_docs = await db.users().find({}, {"_id": 0, "created_at": 1}).to_list(length=1000)
+    daily = {}
+    for u in users_docs:
+        d = (u.get("created_at") or "")[:10]
+        daily[d] = daily.get(d, 0) + 1
+    daily_series = [{"day": k, "count": v} for k, v in sorted(daily.items())][-30:]
+
+    return {
+        "total_users": total_users,
+        "active_30d": active_30d,
+        "revenue_mtd": revenue_mtd,
+        "live_matches": live_matches,
+        "pending_withdrawals": pending_wds,
+        "pending_kyc": pending_kyc,
+        "daily_registrations": daily_series,
+        "revenue_breakdown": [
+            {"name": "Entry fees", "value": int(revenue_mtd * 0.78)},
+            {"name": "Subscriptions", "value": int(revenue_mtd * 0.18)},
+            {"name": "Rake", "value": int(revenue_mtd * 0.04)},
+        ],
+    }
+
+
+@admin.get("/users")
+async def admin_list_users(_: bool = AdminAuth, q: Optional[str] = None, plan: Optional[str] = None):
+    filt = {}
+    if plan and plan != "all":
+        filt["plan"] = plan
+    if q:
+        filt["$or"] = [{"username": {"$regex": q, "$options": "i"}}, {"email": {"$regex": q, "$options": "i"}}]
+    return await db.find_many(db.users(), filt, sort=[("created_at", -1)], limit=100)
+
+
+@admin.post("/users/{user_id}/plan")
+async def admin_set_plan(user_id: str, payload: dict, _: bool = AdminAuth):
+    new_plan = payload.get("plan")
+    if new_plan not in ("FREE", "PRO"):
+        raise HTTPException(status_code=400, detail="Invalid plan")
+    await db.users().update_one({"id": user_id}, {"$set": {"plan": new_plan}})
+    await _audit("user.plan_change", target=user_id, meta={"plan": new_plan})
+    return {"ok": True}
+
+
+@admin.post("/users/{user_id}/suspend")
+async def admin_suspend(user_id: str, payload: dict, _: bool = AdminAuth):
+    reason = payload.get("reason", "")
+    await db.users().update_one({"id": user_id}, {"$set": {"suspended": True, "suspend_reason": reason}})
+    await _audit("user.suspended", target=user_id, meta={"reason": reason})
+    return {"ok": True}
+
+
+@admin.post("/users/{user_id}/unsuspend")
+async def admin_unsuspend(user_id: str, _: bool = AdminAuth):
+    await db.users().update_one({"id": user_id}, {"$set": {"suspended": False}, "$unset": {"suspend_reason": ""}})
+    await _audit("user.unsuspended", target=user_id)
+    return {"ok": True}
+
+
+@admin.get("/duels")
+async def admin_list_duels(_: bool = AdminAuth, status: Optional[str] = None):
+    filt = {}
+    if status and status != "all":
+        filt["status"] = status
+    docs = await db.find_many(db.duels(), filt, sort=[("started_at", -1)], limit=100)
+    user_ids = {d.get("trader_a_id") for d in docs} | {d.get("trader_b_id") for d in docs}
+    user_ids.discard(None)
+    users_map = await _users_by_id(list(user_ids))
+    out = []
+    for d in docs:
+        pnl_a, pnl_b, time_left = compute_duel_pnl(d) if d["status"] == "live" else (d.get("final_pnl_a", 0), d.get("final_pnl_b", 0), 0)
+        out.append({
+            "id": d["id"], "type": d["type"], "status": d["status"],
+            "trader_a": users_map.get(d.get("trader_a_id"), {}).get("username", "—"),
+            "trader_b": users_map.get(d.get("trader_b_id"), {}).get("username", "—"),
+            "account_size": d["account_size"], "entry_fee": d["entry_fee"], "prize": d["prize"],
+            "pnl_a": pnl_a, "pnl_b": pnl_b, "time_left_seconds": time_left,
+            "started_at": d.get("started_at"),
+        })
+    return out
+
+
+@admin.post("/duels/{duel_id}/void")
+async def admin_void_duel(duel_id: str, payload: dict, _: bool = AdminAuth):
+    d = await db.find_one(db.duels(), {"id": duel_id})
+    if not d:
+        raise HTTPException(status_code=404, detail="Duel not found")
+    reason = payload.get("reason", "no reason provided")
+    await db.duels().update_one({"id": duel_id}, {"$set": {"status": "cancelled", "void_reason": reason}})
+    # refund both traders
+    for tid in (d.get("trader_a_id"), d.get("trader_b_id")):
+        if tid:
+            await db.transactions().insert_one({
+                "id": _uid_str(), "user_id": tid, "type": "Refund",
+                "amount": d["entry_fee"], "status": "completed",
+                "reference": f"Refund for {duel_id}",
+                "created_at": _now().isoformat(),
+            })
+    await _audit("duel.voided", target=duel_id, meta={"reason": reason})
+    return {"ok": True}
+
+
+@admin.get("/finance/withdrawals")
+async def admin_withdrawals(_: bool = AdminAuth):
+    docs = await db.transactions().find(
+        {"type": "Withdrawal"}, db.PROJECTION_NO_ID
+    ).sort("created_at", -1).limit(100).to_list(length=100)
+    user_ids = list({d["user_id"] for d in docs if d.get("user_id")})
+    users_map = await _users_by_id(user_ids)
+    for d in docs:
+        u = users_map.get(d.get("user_id"))
+        d["username"] = u["username"] if u else "—"
+        d["kyc_status"] = u.get("kyc_status", "not_started") if u else "—"
+    return docs
+
+
+@admin.post("/finance/withdrawals/{tx_id}/approve")
+async def admin_approve_wd(tx_id: str, _: bool = AdminAuth):
+    await db.transactions().update_one({"id": tx_id}, {"$set": {"status": "completed"}})
+    await _audit("withdrawal.approved", target=tx_id)
+    return {"ok": True}
+
+
+@admin.post("/finance/withdrawals/{tx_id}/reject")
+async def admin_reject_wd(tx_id: str, payload: dict, _: bool = AdminAuth):
+    reason = payload.get("reason", "")
+    await db.transactions().update_one({"id": tx_id}, {"$set": {"status": "rejected", "reject_reason": reason}})
+    # refund balance
+    tx = await db.find_one(db.transactions(), {"id": tx_id})
+    if tx and tx.get("user_id"):
+        await db.users().update_one({"id": tx["user_id"]}, {"$inc": {"balance": abs(tx["amount"])}})
+    await _audit("withdrawal.rejected", target=tx_id, meta={"reason": reason})
+    return {"ok": True}
+
+
+@admin.get("/kyc")
+async def admin_kyc_queue(_: bool = AdminAuth):
+    return await db.find_many(db.users(), {"kyc_status": {"$in": ["pending", "not_started"]}}, limit=100)
+
+
+@admin.post("/kyc/{user_id}/approve")
+async def admin_approve_kyc(user_id: str, _: bool = AdminAuth):
+    await db.users().update_one({"id": user_id}, {"$set": {"kyc_status": "verified"}})
+    await _audit("kyc.approved", target=user_id)
+    return {"ok": True}
+
+
+@admin.post("/kyc/{user_id}/reject")
+async def admin_reject_kyc(user_id: str, payload: dict, _: bool = AdminAuth):
+    reason = payload.get("reason", "")
+    await db.users().update_one({"id": user_id}, {"$set": {"kyc_status": "rejected", "kyc_reject_reason": reason}})
+    await _audit("kyc.rejected", target=user_id, meta={"reason": reason})
+    return {"ok": True}
+
+
+@admin.get("/audit-log")
+async def admin_audit_log(_: bool = AdminAuth, limit: int = 50):
+    docs = await db.db().audit_log.find({}, db.PROJECTION_NO_ID).sort("created_at", -1).limit(limit).to_list(length=limit)
+    return docs
+
+
+@admin.get("/community-signups")
+async def admin_community_signups(_: bool = AdminAuth):
+    return await db.find_many(db.community_signups(), {}, sort=[("created_at", -1)], limit=200)
+
+
+app.include_router(admin)
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
