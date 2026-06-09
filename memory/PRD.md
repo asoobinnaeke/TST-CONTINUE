@@ -8,39 +8,37 @@ Lime green #B4E04C + soft purple #A78BFA on off-white #FAFAF7. Satoshi font. Mod
 
 ## What's Built
 
-### v3 (2026-02-08) — Robust mock backend (CURRENT)
-- **5-file backend** at `/app/backend/`: `models.py` (15 Pydantic models), `database.py` (Motor + 11 collections), `simulator.py` (deterministic on-read live P&L + leaderboards + earnings sparkline), `seed.py` (idempotent demo seeding), `server.py` (35+ endpoints, FastAPI dependency-injected mock auth via X-User-Id/X-Username headers, default `@TradeFury`).
-- **Seeded demo state**: 10 users, 4 live duels (1 custom Pro), 6 royale lobbies (1 live), 2 tournaments (one Registration, one Group Stage with 8 hydrated groups), 2 teams, 6 transactions, 4 notifications, 5 match results, 2 linked accounts.
-- **Live simulation**: P&L, equity series, royale leaderboards, time-left and spectator counts are computed from each entity's `seed` + wall-clock — same input ⇒ same output, no background tasks, no DB writes per tick. Frontend polls every 2-5 s and visibly updates.
-- **Endpoints** (all `/api/*`): `/me` (GET, PATCH), `/me/stats`, `/dashboard`, `/duels/live`, `/duels/{id}` (with equity_series), `/duels/spawn` (creates duel + tx + notif), `/duels/custom` (Pro-gated), `/royale/lobbies` (filterable), `/royale/lobbies/{id}` (with leaderboard), `/royale/lobbies/{id}/join`, `/tournaments`, `/tournaments/{id}` (hydrated groups + prize distribution), `/tournaments/{id}/register`, `/teams` (GET/POST), `/wallet`, `/wallet/deposit`, `/wallet/withdraw` (KYC-gated), `/wallet/transactions`, `/notifications`, `/notifications/mark-all-read`, `/notifications/{id}/read`, `/match-history`, `/settings/kyc/upload`, `/settings/linked-accounts` (CRUD), `/community/notify`, `/stats/live`.
-- **Validations enforced**: username immutable, Pro plan gating, capital-split must sum to total, KYC required before first withdrawal, min deposit/withdrawal $10, balance check, duplicate-join prevention, lobby capacity.
-- **Frontend wiring**: new `/lib/api.js` (single fetch wrapper) + `/lib/useFetch.js` (polling hook). All 10 client pages + landing Community form now consume real API. Mock data file kept only for reference and is no longer imported. Streak hook added to Dashboard.
-- **Verified end-to-end** via curl: spawn creates a real duel + transaction + notification, custom team creation persists, validation errors return proper 400/403, polling reflects DB writes immediately, wallet deposit increments balance.
+### v4 (2026-02-09) — MT5 + 3-min countdown + Admin tabs + Landing Affiliate (CURRENT)
+- **Client Match MT5 dialog**: `/app/frontend/src/pages/app/Match.jsx` shows a non-dismissable dialog to participants only, displaying MT5 login/password/server/platform with a live 3-minute countdown. Confirm button POSTs `/api/duels/{id}/confirm-login`; both-confirmed state sets `trading_started_at` server-side. Spectators do NOT see the dialog.
+- **Admin Matches tabs**: `/app/frontend/src/pages/admin/Matches.jsx` rewritten with three Tabs (Active/Inactive/Completed) and count badges. Active rows show a `Mt5Monitor` cell with remaining countdown + A/B confirmation pips. Inactive includes pairing+cancelled; Completed is completed.
+- **Admin Settlements detail**: `/app/frontend/src/pages/admin/Extras.jsx::AdminSettlements` — clickable settlement rows populate a styled summary panel (trader A/B, account size, entry fee, prize, winner highlight, status, started/ended timestamps, void reason).
+- **Landing Affiliate section**: `/app/frontend/src/components/landing/Affiliate.jsx` — tiered marketing block (Rookie/Pro/Elite/Legend) with rev-share %, signup bonus, ref + volume thresholds, and a CTA to `/app/affiliate`. Added 'Affiliate' link to landing nav.
+- **Backend additions**: `/api/duels/{id}` and `/api/admin/duels` now return `started_at`, `login_confirmed_a/b`, `trading_started_at` for MT5 monitoring. `/api/duels/{id}/mt5` (participant-gated) + `/api/duels/{id}/confirm-login` consumed by UI.
+- **Tests**: 14 pytest cases at `/app/backend/tests/backend_test.py`, 100% passing. Frontend testids all verified by testing agent.
+
+### v3 (2026-02-08) — Robust mock backend
+- 5-file backend at `/app/backend/`: `models.py` (15 Pydantic models), `database.py`, `simulator.py` (deterministic on-read live P&L), `seed.py` (idempotent), `server.py` (35+ endpoints, mock auth via X-User-Id/X-Username, default @TradeFury).
+- Seeded demo state: 10 users, duels, royale lobbies, tournaments, teams, transactions, notifications.
+- Live simulation: P&L/leaderboards/timers computed from seed + wall-clock — no background tasks, no DB writes per tick.
 
 ### v2 — Modern fintech landing page
 ### v1 (deprecated) — Dark esports landing
 
-## Mock data sources removed
-`/app/frontend/src/lib/mockData.js` is no longer used by any page (kept on disk as reference, safe to delete).
-
 ## Backlog
 
-### P0 (next)
-- Real auth: JWT + Emergent Google. Token → X-User-Id header. Protect `/app/*`. Call `integration_playbook_expert_v2`.
-- Active Match screen: server-driven trade feed (currently still hard-coded sample trades).
-- Auto-tick Royale lobby status: filling → starting → live → completed (currently static after seed).
+### P1 (next)
+- Real auth: JWT + Emergent Google. Token → X-User-Id header.
+- Active Match screen: server-driven trade feed (`/api/duels/{id}/trades` — currently sample trades).
+- Auto-tick Royale lobby status: filling → starting → live → completed.
+- Wallet deposit UI polish in Client Area.
 
-### P1
+### P2
 - Stripe test-mode for Pro subscription + entry fees.
 - Real KYC upload to object storage.
 - Email transactional (Resend/SendGrid) for prize/pair/tournament alerts.
-- Settings page wired to PATCH `/api/me` for editable fields.
+- Refactor `server.py` (>1200 lines) into `/app/backend/routes/{client,admin,affiliate}.py`.
+- Community Battles functional implementation.
+- Recharts width(-1) warnings on Match.jsx (cosmetic; carry-over).
 
-### P2 — Admin Portal
-- `/admin/login`, audit-logged actions for user/duel/royale/tournament/finance/disputes/KYC/announcements.
-
-## Next Tasks
-1. Wire **real auth** (JWT + Emergent Google) — required before public launch.
-2. Replace **Match screen sample trades** with `/api/duels/{id}/trades` endpoint.
-3. Add **rotating duel lifecycle** (background task that auto-completes duels and credits prizes).
-4. Begin **Admin Portal** scaffold.
+## Test Credentials
+See `/app/memory/test_credentials.md`. Admin: admin@selecttraders.com / admin-2026.
