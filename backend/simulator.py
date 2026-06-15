@@ -83,7 +83,13 @@ def compute_equity_series(duel: dict, points: int = 40) -> List[dict]:
 
 
 def compute_royale_leaderboard(lobby: dict, participants: List[dict]) -> List[dict]:
-    """Given a lobby and its participating users, return a sorted leaderboard."""
+    """Given a lobby and its participating users, return a sorted leaderboard.
+
+    Marks users as eliminated based on the two-phase elimination engine:
+    Phase 1 (first half of timeline) — no eliminations; Phase 2 (second half) —
+    eliminations happen at equal intervals (rounded to the nearest 30s) with the
+    lowest-equity active trader eliminated each tick until 1 winner remains.
+    """
     seed = lobby.get("seed", 42)
     started_at = lobby.get("started_at") or lobby.get("starts_at") or _now()
     if isinstance(started_at, str):
@@ -91,39 +97,161 @@ def compute_royale_leaderboard(lobby: dict, participants: List[dict]) -> List[di
     elapsed = max(0, int((_now() - started_at).total_seconds()))
     t_bucket = elapsed // 3
 
+    def _equity(idx: int, bucket: int) -> float:
+        rng = random.Random((seed * 7901) ^ (idx * 131) ^ bucket)
+        drift = 0.42 + rng.random() * 0.18
+        pnl = _smooth_drift(seed * 1000 + idx, bucket, drift) * 0.5
+        return 50000 + pnl, pnl
+
+    state = compute_royale_state(lobby)
+    elim_set = set(state["eliminated_user_ids"])
+    elim_order = state["eliminated_user_ids"]  # in order of elimination
+
     rows = []
     for idx, p in enumerate(participants):
-        rng = random.Random((seed * 7901) ^ (idx * 131) ^ t_bucket)
-        drift = 0.42 + rng.random() * 0.18
-        pnl = _smooth_drift(seed * 1000 + idx, t_bucket, drift)
-        # scale based on default royale account ($5K)
-        pnl = round(pnl * 0.5, 2)
-        rows.append({"user": p, "pnl": pnl, "equity": 50000 + pnl})
+        equity, pnl = _equity(idx, t_bucket)
+        rows.append({
+            "user": p, "pnl": round(pnl, 2),
+            "equity": round(equity, 2),
+            "is_eliminated": p["id"] in elim_set,
+            "_idx": idx,
+        })
 
-    rows.sort(key=lambda r: r["equity"], reverse=True)
+    # Active first (sorted by equity desc), then eliminated (in reverse elim order — last out first)
+    active = [r for r in rows if not r["is_eliminated"]]
+    eliminated = [r for r in rows if r["is_eliminated"]]
+    active.sort(key=lambda r: r["equity"], reverse=True)
+    # eliminated_user_ids is in order of elimination; preserve so "last eliminated" is shown first
+    elim_idx_map = {uid: i for i, uid in enumerate(elim_order)}
+    eliminated.sort(key=lambda r: elim_idx_map.get(r["user"]["id"], 0), reverse=True)
 
-    # rank-change vs previous bucket
+    # rank-change vs previous bucket — only for active
     prev_bucket = max(0, t_bucket - 1)
-    prev_rows = []
-    for idx, p in enumerate(participants):
-        rng = random.Random((seed * 7901) ^ (idx * 131) ^ prev_bucket)
-        drift = 0.42 + rng.random() * 0.18
-        pnl = _smooth_drift(seed * 1000 + idx, prev_bucket, drift) * 0.5
-        prev_rows.append({"user": p, "equity": 50000 + pnl})
-    prev_rows.sort(key=lambda r: r["equity"], reverse=True)
-    prev_ranks = {r["user"]["id"]: i for i, r in enumerate(prev_rows)}
+    prev_rows = [(p["id"], _equity(idx, prev_bucket)[0]) for idx, p in enumerate(participants) if p["id"] not in elim_set]
+    prev_rows.sort(key=lambda r: r[1], reverse=True)
+    prev_ranks = {uid: i for i, (uid, _) in enumerate(prev_rows)}
 
     out = []
-    for new_rank, r in enumerate(rows):
-        old_rank = prev_ranks.get(r["user"]["id"], new_rank)
+    rank = 0
+    for r in active:
+        rank += 1
+        old_rank = prev_ranks.get(r["user"]["id"], rank - 1)
         out.append({
-            "rank": new_rank + 1,
-            "user": r["user"],
-            "equity": round(r["equity"], 2),
-            "pnl": round(r["pnl"], 2),
-            "change": old_rank - new_rank,
+            "rank": rank, "user": r["user"],
+            "equity": r["equity"], "pnl": r["pnl"],
+            "change": old_rank - (rank - 1),
+            "is_eliminated": False,
+        })
+    for r in eliminated:
+        rank += 1
+        out.append({
+            "rank": rank, "user": r["user"],
+            "equity": r["equity"], "pnl": r["pnl"],
+            "change": 0,
+            "is_eliminated": True,
         })
     return out
+
+
+def compute_royale_state(lobby: dict) -> dict:
+    """Compute two-phase elimination state for a Royale lobby.
+
+    Phase 1: first half of timeline, no eliminations.
+    Phase 2: second half — at equal intervals (rounded to nearest 30s)
+    eliminate the lowest-equity active trader, until 1 winner remains.
+    """
+    size = lobby.get("size", 10)
+    timeline_seconds = lobby.get("timeline_seconds", 600)
+    status = lobby.get("status", "filling")
+    participant_ids = lobby.get("participant_ids", [])
+    seed = lobby.get("seed", 42)
+
+    started_at = lobby.get("started_at")
+    if isinstance(started_at, str):
+        started_at = datetime.fromisoformat(started_at)
+    if not started_at or status not in ("live", "completed"):
+        # Pre-live: no eliminations yet
+        return {
+            "phase": "pre", "phase_label": "Awaiting start",
+            "next_elimination_in_seconds": None,
+            "eliminations_remaining": max(0, len(participant_ids) - 1),
+            "total_active": len(participant_ids),
+            "eliminated_user_ids": [],
+            "phase_1_ends_in_seconds": None,
+            "phase_2_ends_in_seconds": None,
+        }
+
+    elapsed = max(0, int((_now() - started_at).total_seconds()))
+    half = timeline_seconds // 2
+    n = len(participant_ids)
+    if n <= 1:
+        return {
+            "phase": "finished", "phase_label": "Royale finished",
+            "next_elimination_in_seconds": None,
+            "eliminations_remaining": 0,
+            "total_active": n,
+            "eliminated_user_ids": [],
+            "phase_1_ends_in_seconds": 0,
+            "phase_2_ends_in_seconds": 0,
+        }
+
+    # Compute elimination interval — round to nearest 30s
+    raw_interval = half / max(1, n - 1)
+    interval = max(30, round(raw_interval / 30) * 30)
+
+    # Schedule elimination ticks: at half, half+interval, half+2*interval, ...
+    # We need (n - 1) eliminations to crown a winner.
+    tick_times = [half + i * interval for i in range(n - 1)]
+
+    # Determine which ticks have already occurred
+    occurred = [t for t in tick_times if elapsed >= t]
+
+    def _equity(idx: int, t_seconds: int) -> float:
+        bucket = t_seconds // 3
+        rng = random.Random((seed * 7901) ^ (idx * 131) ^ bucket)
+        drift = 0.42 + rng.random() * 0.18
+        pnl = _smooth_drift(seed * 1000 + idx, bucket, drift) * 0.5
+        return 50000 + pnl
+
+    # Walk through occurred ticks and eliminate lowest equity at each tick
+    alive_idxs = list(range(n))
+    eliminated_user_ids: List[str] = []
+    for t in occurred:
+        if len(alive_idxs) <= 1:
+            break
+        equities = [(idx, _equity(idx, t)) for idx in alive_idxs]
+        equities.sort(key=lambda x: x[1])  # lowest first
+        eliminated_idx = equities[0][0]
+        alive_idxs.remove(eliminated_idx)
+        eliminated_user_ids.append(participant_ids[eliminated_idx])
+
+    # Build response
+    if elapsed < half:
+        phase = "phase1"
+        next_elim_in = half - elapsed
+        phase_label = "Phase 1 — All fighting"
+    elif len(alive_idxs) <= 1:
+        phase = "finished"
+        next_elim_in = None
+        phase_label = "Royale finished"
+    else:
+        phase = "phase2"
+        # next tick beyond current elapsed
+        future = [t for t in tick_times if t > elapsed]
+        next_elim_in = (future[0] - elapsed) if future else None
+        phase_label = "Phase 2 — Elimination round"
+
+    return {
+        "phase": phase,
+        "phase_label": phase_label,
+        "next_elimination_in_seconds": next_elim_in,
+        "eliminations_remaining": max(0, n - 1 - len(eliminated_user_ids)),
+        "total_active": len(alive_idxs),
+        "eliminated_user_ids": eliminated_user_ids,
+        "elimination_interval_seconds": interval,
+        "phase_1_ends_in_seconds": max(0, half - elapsed),
+        "phase_2_ends_in_seconds": max(0, timeline_seconds - elapsed),
+    }
 
 
 def compute_starts_in(lobby: dict) -> str:

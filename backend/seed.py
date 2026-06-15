@@ -98,15 +98,22 @@ async def seed_all():
                     "4h": 14400, "24h": 86400, "36h": 129600, "48h": 172800, "72h": 259200}
     lobby_specs = [
         (50, "24h", "filling", 47, 12),     # filling, starts in 12 min
-        (20, "1h", "live", 20, 0),           # live now
+        (20, "1h", "live", 20, 0, 12),       # live 12 min in (phase 1, halfway through)
         (10, "5min", "filling", 6, 0),       # filling, no specific start
         (50, "72h", "filling", 12, 0),
         (20, "4h", "filling", 15, 120),      # starts in 2h
-        (10, "30min", "starting", 10, 1),    # starting soon
+        (10, "30min", "live", 10, 0, 22),    # live 22 min in (phase 2, mid eliminations)
     ]
-    for size, timeline, status, joined, starts_min in lobby_specs:
+    for spec in lobby_specs:
+        size, timeline, status, joined, starts_min = spec[:5]
+        # optional "minutes since start" for live lobbies (phase demo)
+        live_elapsed_min = spec[5] if len(spec) > 5 else None
         starts_at = now + timedelta(minutes=starts_min) if starts_min else None
-        started_at = now - timedelta(minutes=27) if status == "live" else None
+        if status == "live":
+            elapsed = live_elapsed_min or 27
+            started_at = now - timedelta(minutes=elapsed)
+        else:
+            started_at = None
         ends_at = (started_at + timedelta(seconds=timeline_map[timeline])) if started_at else None
         participants = list(users_map.values())[:joined] if joined else []
         lobby = RoyaleLobby(
@@ -127,6 +134,8 @@ async def seed_all():
 
     # ----- TOURNAMENTS -----
     user_ids = [u.id for u in users_map.values()]
+    other_user_ids = [u.id for u in users_map.values() if u.username != "TradeFury"]
+    tradefury_id = users_map["TradeFury"].id
 
     def make_groups(active_user_id: str, week_1_done: bool):
         groups = []
@@ -151,22 +160,178 @@ async def seed_all():
             groups.append({"label": label, "rows": rows})
         return groups
 
-    tournaments_seed = [
-        {"name": "February Open", "stage": "Registration", "start_date": "Feb 10", "prize_pool": 12800,
-         "registered": user_ids[:6], "groups": []},
-        {"name": "Crypto Circuit", "stage": "Group Stage", "start_date": "Feb 12", "prize_pool": 25600,
-         "registered": user_ids[:10], "groups": make_groups(users_map["TradeFury"].id, True)},
-    ]
-    for t in tournaments_seed:
-        tour = Tournament(
-            name=t["name"],
-            stage=t["stage"],
-            start_date=t["start_date"],
-            prize_pool=t["prize_pool"],
-            registered_ids=t["registered"],
-            groups=t["groups"],
-        )
-        await db.tournaments().insert_one(tour.model_dump())
+    def _make_completed_groups(me_id: str, me_advances: bool):
+        """Build groups where the user has a deterministic group A record."""
+        groups = []
+        # Group A — featured group, contains the demo user
+        my_w, my_d, my_l = (2, 1, 0) if me_advances else (1, 0, 2)
+        my_equity = 8200 if me_advances else -1400
+        rows_a = [{"user_id": me_id, "w": my_w, "d": my_d, "l": my_l,
+                   "equity": my_equity, "advanced": me_advances}]
+        for i in range(3):
+            opp = other_user_ids[(i + 1) % len(other_user_ids)]
+            w, d, l = random.choice([(3, 0, 0), (2, 1, 0), (1, 0, 2), (0, 1, 2)])
+            rows_a.append({"user_id": opp, "w": w, "d": d, "l": l,
+                           "equity": random.randint(-4000, 12000),
+                           "advanced": w >= 2})
+        groups.append({"label": "A", "rows": rows_a})
+        # Groups B-H — random
+        for label in "BCDEFGH":
+            rows = []
+            for i in range(4):
+                u_id = other_user_ids[(i * 3 + ord(label)) % len(other_user_ids)]
+                w, d, l = random.choice([(3, 0, 0), (2, 1, 0), (1, 0, 2), (0, 1, 2)])
+                rows.append({"user_id": u_id, "w": w, "d": d, "l": l,
+                             "equity": random.randint(-5000, 14000),
+                             "advanced": w >= 2})
+            groups.append({"label": label, "rows": rows})
+        return groups
+
+    def _bracket_for_user(tournament_id: str, exit_stage: str, account_size: int):
+        """Build a completed bracket where the demo user exits at `exit_stage`.
+
+        exit_stage in: "R16", "QF", "SF", "Final", "Champion"
+        Returns: bracket dict + winner_id + the demo user's per-stage results.
+        """
+        stages_order = ["R16", "QF", "SF", "Final"]
+        # Determine when the user loses
+        loses_at_index = {"R16": 0, "QF": 1, "SF": 2, "Final": 3, "Champion": None}[exit_stage]
+
+        bracket = {s: [] for s in stages_order}
+        my_matches = []
+        my_id = tradefury_id
+        # Pre-allocate opponents for each round (unique per stage)
+        opp_pool = [u for u in other_user_ids]
+        random.shuffle(opp_pool)
+        my_pnl_total = 0
+        for i, stage in enumerate(stages_order):
+            opp_id = opp_pool[i % len(opp_pool)]
+            user_wins = (loses_at_index is None) or (i < loses_at_index)
+            if user_wins:
+                pnl_a = random.randint(800, 2400)
+                pnl_b = random.randint(-1200, 500)
+            else:
+                pnl_a = random.randint(-1400, 300)
+                pnl_b = random.randint(900, 2200)
+            winner_id = my_id if user_wins else opp_id
+            match = {
+                "match_id": f"{tournament_id}-{stage}-MY",
+                "user_a": my_id, "user_b": opp_id,
+                "pnl_a": pnl_a, "pnl_b": pnl_b,
+                "winner_id": winner_id, "completed": True,
+                "date_label": (now - timedelta(days=(4 - i) * 2 + 8)).strftime("%b %d"),
+                "account_size": account_size,
+            }
+            bracket[stage].append(match)
+            my_matches.append({"stage": stage, "match": match})
+            my_pnl_total += pnl_a
+            if not user_wins:
+                # Fill remaining stages without the demo user
+                remaining_winner = opp_id
+                for j in range(i + 1, len(stages_order)):
+                    rs = stages_order[j]
+                    next_opp = opp_pool[(j + 7) % len(opp_pool)]
+                    pa = random.randint(-1400, 2200)
+                    pb = random.randint(-1400, 2200)
+                    win_a = pa > pb
+                    bracket[rs].append({
+                        "match_id": f"{tournament_id}-{rs}-NXT",
+                        "user_a": remaining_winner, "user_b": next_opp,
+                        "pnl_a": pa, "pnl_b": pb,
+                        "winner_id": remaining_winner if win_a else next_opp,
+                        "completed": True,
+                        "date_label": (now - timedelta(days=(4 - j) * 2 + 8)).strftime("%b %d"),
+                        "account_size": account_size,
+                    })
+                    remaining_winner = remaining_winner if win_a else next_opp
+                tournament_winner_id = remaining_winner
+                break
+        else:
+            tournament_winner_id = my_id
+
+        # Add "filler" matches per stage so each stage has more than one match
+        # (just to show the full bracket — pure decoration)
+        stage_slots = {"R16": 8, "QF": 4, "SF": 2, "Final": 1}
+        for stage in stages_order:
+            existing = len(bracket[stage])
+            for k in range(stage_slots[stage] - existing):
+                a = opp_pool[(k * 2 + 1) % len(opp_pool)]
+                b = opp_pool[(k * 2 + 2) % len(opp_pool)]
+                if a == b:
+                    b = opp_pool[(k * 2 + 4) % len(opp_pool)]
+                pa = random.randint(-1500, 2500)
+                pb = random.randint(-1500, 2500)
+                win_a = pa > pb
+                bracket[stage].append({
+                    "match_id": f"{tournament_id}-{stage}-F{k}",
+                    "user_a": a, "user_b": b,
+                    "pnl_a": pa, "pnl_b": pb,
+                    "winner_id": a if win_a else b,
+                    "completed": True,
+                    "date_label": (now - timedelta(days=(4 - stages_order.index(stage)) * 2 + 8)).strftime("%b %d"),
+                    "account_size": account_size,
+                })
+
+        return bracket, tournament_winner_id, my_pnl_total
+
+    # 1. Completed tournament — TradeFury reached SF (3rd place)
+    spring_id = "T-SPRING"
+    spring_bracket, spring_winner, _ = _bracket_for_user(spring_id, "SF", 50000)
+    spring_groups = _make_completed_groups(tradefury_id, me_advances=True)
+    spring_t = Tournament(
+        id=spring_id,
+        name="Spring Classic 2026",
+        stage="Completed",
+        start_date="Jan 5",
+        prize_pool=50000,
+        registered_ids=user_ids,
+        groups=spring_groups,
+        bracket=spring_bracket,
+        winner_id=spring_winner,
+        account_size=50000,
+    )
+    await db.tournaments().insert_one(spring_t.model_dump())
+
+    # 2. Completed tournament — TradeFury eliminated in R16
+    bronze_id = "T-BRONZE"
+    bronze_bracket, bronze_winner, _ = _bracket_for_user(bronze_id, "R16", 25000)
+    bronze_groups = _make_completed_groups(tradefury_id, me_advances=True)
+    bronze_t = Tournament(
+        id=bronze_id,
+        name="Bronze Cup 2026",
+        stage="Completed",
+        start_date="Dec 10",
+        prize_pool=25000,
+        registered_ids=user_ids,
+        groups=bronze_groups,
+        bracket=bronze_bracket,
+        winner_id=bronze_winner,
+        account_size=25000,
+    )
+    await db.tournaments().insert_one(bronze_t.model_dump())
+
+    # 3. Ongoing — in Group Stage
+    diamond_t = Tournament(
+        name="Diamond Open 2026",
+        stage="Group Stage",
+        start_date="Feb 12",
+        prize_pool=120000,
+        registered_ids=user_ids[:24],
+        groups=_make_completed_groups(tradefury_id, me_advances=True),
+        account_size=100000,
+    )
+    await db.tournaments().insert_one(diamond_t.model_dump())
+
+    # 4. Registration-open
+    feb_open_t = Tournament(
+        name="February Open",
+        stage="Registration",
+        start_date="Feb 25",
+        prize_pool=12800,
+        registered_ids=user_ids[:6],
+        account_size=10000,
+    )
+    await db.tournaments().insert_one(feb_open_t.model_dump())
 
     # ----- TEAMS -----
     team_specs = [
@@ -191,7 +356,6 @@ async def seed_all():
         await db.teams().insert_one(team.model_dump())
 
     # ----- TRANSACTIONS for current user -----
-    tradefury_id = users_map["TradeFury"].id
     tx_seed = [
         ("Prize", 1000, "completed", "Duel #4779", 5),
         ("Entry Fee", -550, "completed", "Duel #4779", 5),

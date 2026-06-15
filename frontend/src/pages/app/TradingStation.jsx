@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Radio, Hourglass, CheckCircle2, ArrowUpRight, Swords, Crown, Trophy } from "lucide-react";
+import { Radio, Hourglass, CheckCircle2, ArrowUpRight, Swords, Crown, Trophy, Eye } from "lucide-react";
 import PageHeader from "@/components/app/PageHeader";
+import StationDetailDialog from "@/components/app/StationDetailDialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useFetch } from "@/lib/useFetch";
 import { getTradingStation } from "@/lib/api";
@@ -22,6 +23,7 @@ const TABS = [
 export default function TradingStation() {
   const { data, refetch } = useFetch(getTradingStation, { pollMs: 4000 });
   const [tab, setTab] = useState("active");
+  const [detailItem, setDetailItem] = useState(null);
   const groups = data || { active: [], pending: [], completed: [] };
 
   return (
@@ -52,15 +54,17 @@ export default function TradingStation() {
 
         {TABS.map((t) => (
           <TabsContent key={t.value} value={t.value} className="mt-6">
-            <EventList items={groups[t.value] || []} variant={t.value} />
+            <EventList items={groups[t.value] || []} variant={t.value} onViewDetail={setDetailItem} />
           </TabsContent>
         ))}
       </Tabs>
+
+      <StationDetailDialog open={!!detailItem} item={detailItem} onClose={() => setDetailItem(null)} />
     </div>
   );
 }
 
-function EventList({ items, variant }) {
+function EventList({ items, variant, onViewDetail }) {
   const navigate = useNavigate();
   if (!items.length) {
     return (
@@ -78,10 +82,10 @@ function EventList({ items, variant }) {
       {items.map((it) => {
         const meta = KIND_META[it.kind] || KIND_META["duel-standard"];
         const Icon = meta.icon;
+        const canViewAccount = variant !== "pending"; // hide for pending where nothing is live yet
         return (
-          <button
+          <div
             key={it.id}
-            onClick={() => navigate(it.link)}
             data-testid={`station-row-${it.id}`}
             className="w-full flex items-center gap-4 px-5 py-4 hover:bg-[var(--bg)] text-left transition-colors"
           >
@@ -114,8 +118,25 @@ function EventList({ items, variant }) {
                 <div className="font-mono text-[11px] text-[var(--muted)]">{formatLeft(it.time_left_seconds)}</div>
               )}
             </div>
-            <ArrowUpRight className="w-4 h-4 text-[var(--muted-2)] shrink-0" />
-          </button>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {canViewAccount && (
+                <button
+                  onClick={() => onViewDetail({ id: it.id, kind: it.kind, label: it.label })}
+                  data-testid={`view-account-${it.id}`}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[var(--ink)] bg-[var(--bg)] border border-[var(--border)] px-2.5 py-1.5 rounded-full hover:bg-[var(--lime-soft)] hover:border-[#B4E04C]"
+                >
+                  <Eye className="w-3 h-3" /> Account
+                </button>
+              )}
+              <button
+                onClick={() => navigate(it.link)}
+                data-testid={`open-match-${it.id}`}
+                className="grid place-items-center w-7 h-7 rounded-full text-[var(--muted-2)] hover:text-[var(--ink)] hover:bg-[var(--bg)]"
+              >
+                <ArrowUpRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         );
       })}
     </div>

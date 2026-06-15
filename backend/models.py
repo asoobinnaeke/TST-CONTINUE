@@ -225,6 +225,12 @@ class Tournament(BaseModel):
     prize_pool: int
     groups: List[dict] = Field(default_factory=list)
     # groups format: [{ "label": "A", "rows": [{ "user_id": "x", "w": 0, "d": 0, "l": 0, "equity": 0, "advanced": bool }, ...] }, ...]
+    # bracket format: {"R16": [...matches], "QF": [...], "SF": [...], "Final": [...]}
+    #   each match: {"match_id": str, "user_a": uid, "user_b": uid, "pnl_a": float,
+    #                "pnl_b": float, "winner_id": uid, "completed": bool, "date_label": str, "account_size": int}
+    bracket: dict = Field(default_factory=dict)
+    winner_id: Optional[str] = None
+    account_size: int = 50000
 
 
 # ---------- Team (Tag Team) ----------

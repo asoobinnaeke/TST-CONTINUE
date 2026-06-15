@@ -62,7 +62,17 @@ export const listLobbies = (filters = {}) => {
   return http(`/royale/lobbies${q ? `?${q}` : ""}`);
 };
 export const getLobby = (id) => http(`/royale/lobbies/${id}`);
+export const getLobbyState = (id) => http(`/royale/lobbies/${id}/state`);
 export const joinLobby = (id) => http(`/royale/lobbies/${id}/join`, { method: "POST" });
+
+// ---------- Trading Station detail ----------
+export const getStationDuelDetail = (id) => http(`/me/trading-station/duel/${id}`);
+export const getStationRoyaleDetail = (id) => http(`/me/trading-station/royale/${id}`);
+export const getStationTournamentDetail = (id) => http(`/me/trading-station/tournament/${id}`);
+
+// ---------- Tournament journey ----------
+export const getMyTournamentJourneys = () => http("/me/tournaments/journey");
+export const getTournamentBracket = (id) => http(`/tournaments/${id}/bracket`);
 
 // ---------- Tournaments ----------
 export const listTournaments = () => http("/tournaments");

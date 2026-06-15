@@ -26,7 +26,7 @@ from models import (
 import seed
 from simulator import (
     compute_duel_pnl, compute_earnings_trend, compute_equity_series, compute_royale_leaderboard,
-    compute_spectators, compute_starts_in,
+    compute_royale_state, compute_spectators, compute_starts_in,
 )
 
 ROOT_DIR = Path(__file__).parent
@@ -313,7 +313,7 @@ async def my_trading_station(me: dict = CurrentUser):
     # Royale registrations (pending lobbies the user joined)
     royale_docs = await db.find_many(
         db.royale_lobbies(),
-        {"registered_ids": my_id},
+        {"participant_ids": my_id},
         sort=[("starts_at", 1)],
         limit=50,
     )
@@ -731,6 +731,318 @@ async def duels_ready(duel_id: str, me: dict = CurrentUser):
     opponent_id = d.get("trader_b_id") if d.get("trader_a_id") == me["id"] else d.get("trader_a_id")
     opponent = await db.find_one(db.users(), {"id": opponent_id}) if opponent_id else None
     return _queue_view(d, me["id"], opponent)
+
+
+# ============================================================
+# Trading Station — per-event detail (MT5 + equity curves)
+# ============================================================
+
+STAGE_LABELS = {"R16": "Round of 16", "QF": "Quarter-Finals", "SF": "Semi-Finals", "Final": "Final"}
+STAGE_ORDER = ["R16", "QF", "SF", "Final"]
+
+
+def _prize_for_exit(prize_pool: int, exit_stage: str, is_champion: bool) -> int:
+    if is_champion:
+        return int(prize_pool * 0.15)
+    table = {
+        "R16": int(prize_pool * 0.25 / 16),
+        "QF": int(prize_pool * 0.25 / 8) + int(prize_pool * 0.25 / 16),
+        "SF": int(prize_pool * 0.20 / 4) + int(prize_pool * 0.25 / 8) + int(prize_pool * 0.25 / 16),
+        "Final": int(prize_pool * 0.15) + int(prize_pool * 0.20 / 4) + int(prize_pool * 0.25 / 8) + int(prize_pool * 0.25 / 16),
+    }
+    return table.get(exit_stage, 0)
+
+
+def _build_journey(t: dict, user_id: str) -> dict:
+    """Build the per-user journey across group stage + bracket stages."""
+    group_record = None
+    for g in t.get("groups", []):
+        for r in g.get("rows", []):
+            if r.get("user_id") == user_id:
+                group_record = {
+                    "group": g["label"],
+                    "w": r["w"], "d": r["d"], "l": r["l"],
+                    "equity": r["equity"],
+                    "advanced": r.get("advanced", False),
+                }
+                break
+        if group_record:
+            break
+
+    bracket = t.get("bracket", {}) or {}
+    path = []
+    if group_record:
+        path.append({
+            "stage": "Group Stage",
+            "result": "Advanced" if group_record["advanced"] else "Eliminated",
+            "opponent": f"Group {group_record['group']}",
+            "details": f"{group_record['w']}-{group_record['d']}-{group_record['l']}",
+            "pnl": group_record["equity"],
+            "advanced": group_record["advanced"],
+        })
+
+    exit_stage = None
+    is_champion = False
+    total_pnl = group_record["equity"] if group_record else 0
+
+    for stage in STAGE_ORDER:
+        matches = bracket.get(stage, [])
+        m = next((mm for mm in matches if mm.get("user_a") == user_id or mm.get("user_b") == user_id), None)
+        if not m:
+            break
+        is_a = m["user_a"] == user_id
+        me_pnl = m["pnl_a"] if is_a else m["pnl_b"]
+        opp_pnl = m["pnl_b"] if is_a else m["pnl_a"]
+        opp_id = m["user_b"] if is_a else m["user_a"]
+        won = m.get("winner_id") == user_id
+        path.append({
+            "stage": STAGE_LABELS[stage],
+            "stage_key": stage,
+            "result": "Won" if won else "Lost",
+            "opponent_id": opp_id,
+            "pnl": me_pnl,
+            "opponent_pnl": opp_pnl,
+            "date_label": m.get("date_label"),
+            "advanced": won,
+            "match_id": m.get("match_id"),
+        })
+        total_pnl += me_pnl
+        if not won:
+            exit_stage = stage
+            break
+        if stage == "Final":
+            is_champion = True
+            exit_stage = "Champion"
+
+    exit_label = STAGE_LABELS.get(exit_stage, "Champion" if is_champion else (path[-1]["stage"] if path else "Not started"))
+    prize_won = 0
+    if t.get("stage") == "Completed":
+        if is_champion:
+            prize_won = _prize_for_exit(t["prize_pool"], "Final", True)
+        elif exit_stage:
+            prize_won = _prize_for_exit(t["prize_pool"], exit_stage, False)
+
+    return {
+        "tournament_id": t["id"],
+        "tournament_name": t["name"],
+        "tournament_stage": t.get("stage"),
+        "tournament_start": t.get("start_date"),
+        "tournament_prize_pool": t["prize_pool"],
+        "account_size": t.get("account_size", 50000),
+        "group": group_record,
+        "path": path,
+        "exit_stage": exit_label,
+        "is_champion": is_champion,
+        "prize_won": prize_won,
+        "total_pnl": total_pnl,
+    }
+
+
+@api.get("/me/trading-station/duel/{duel_id}")
+async def station_duel_detail(duel_id: str, me: dict = CurrentUser):
+    """Detailed view of a duel from the participant's perspective."""
+    d = await db.find_one(db.duels(), {"id": duel_id})
+    if not d:
+        raise HTTPException(404, detail="Duel not found")
+    if me["id"] not in (d.get("trader_a_id"), d.get("trader_b_id")):
+        raise HTTPException(403, detail="Not a participant in this duel")
+
+    user_ids = [d.get("trader_a_id"), d.get("trader_b_id")]
+    users_map = await _users_by_id([u for u in user_ids if u])
+    pnl_a, pnl_b, time_left = compute_duel_pnl(d) if d["status"] == "live" else (
+        d.get("final_pnl_a", 0) or 0, d.get("final_pnl_b", 0) or 0, 0)
+
+    is_a = d.get("trader_a_id") == me["id"]
+    me_pnl = pnl_a if is_a else pnl_b
+    opp_pnl = pnl_b if is_a else pnl_a
+    opponent = users_map.get(d.get("trader_b_id") if is_a else d.get("trader_a_id"))
+
+    mt5 = _mt5_for_duel(duel_id, me["id"])
+    series = compute_equity_series(d, points=40) if d["status"] == "live" else []
+    me_series = [{"i": p["i"], "v": p["a" if is_a else "b"]} for p in series]
+    opp_series = [{"i": p["i"], "v": p["b" if is_a else "a"]} for p in series]
+
+    return {
+        "id": d["id"],
+        "kind": "duel-pro" if d.get("type") == "custom" else "duel-standard",
+        "label": "1v1 Duel · Pro" if d.get("type") == "custom" else "1v1 Duel · Standard",
+        "status": d.get("status"),
+        "account_size": d.get("account_size"),
+        "entry_fee": d.get("entry_fee"),
+        "prize": d.get("prize"),
+        "started_at": d.get("started_at"),
+        "ends_at": d.get("ends_at"),
+        "time_left_seconds": time_left,
+        "rules": d.get("rules", {}),
+        "me": {
+            "username": me["username"], "tier": me.get("tier"),
+            "pnl": me_pnl, "equity": d["account_size"] + me_pnl,
+            "equity_series": me_series, "mt5": mt5,
+            "login_confirmed": d.get("login_confirmed_a") if is_a else d.get("login_confirmed_b"),
+            "is_ready": bool(d.get("trader_a_ready") if is_a else d.get("trader_b_ready")),
+        },
+        "opponent": {
+            "username": opponent["username"] if opponent else "—",
+            "tier": opponent.get("tier") if opponent else None,
+            "is_bot": bool(d.get("trader_b_is_bot")) and is_a,
+            "pnl": opp_pnl, "equity": d["account_size"] + opp_pnl,
+            "equity_series": opp_series,
+            "login_confirmed": d.get("login_confirmed_b") if is_a else d.get("login_confirmed_a"),
+            "is_ready": bool(d.get("trader_b_ready") if is_a else d.get("trader_a_ready")),
+        },
+    }
+
+
+@api.get("/me/trading-station/royale/{lobby_id}")
+async def station_royale_detail(lobby_id: str, me: dict = CurrentUser):
+    l = await db.find_one(db.royale_lobbies(), {"id": lobby_id})
+    if not l:
+        raise HTTPException(404, detail="Lobby not found")
+    if me["id"] not in l.get("participant_ids", []):
+        raise HTTPException(403, detail="Not a participant in this lobby")
+
+    participants = await _users_by_id(l.get("participant_ids", []))
+    ordered = [participants[pid] for pid in l.get("participant_ids", []) if pid in participants]
+    public_users = [_public(u).model_dump() for u in ordered]
+    leaderboard = compute_royale_leaderboard(l, public_users) if l["status"] in ("live", "completed") else []
+    state = compute_royale_state(l)
+    mt5 = _mt5_for_duel(lobby_id, me["id"])
+
+    return {
+        "id": l["id"], "kind": "royale",
+        "label": f"Trading Royale · {l['size']}-Player · {l['timeline']}",
+        "status": l["status"], "size": l["size"], "timeline": l["timeline"],
+        "timeline_seconds": l.get("timeline_seconds"),
+        "started_at": l.get("started_at"), "ends_at": l.get("ends_at"),
+        "entry_fee": l["entry_fee"],
+        "prize_pool": int(l["size"] * l["entry_fee"] * 0.85),
+        "joined": len(l.get("participant_ids", [])),
+        "state": state, "leaderboard": leaderboard,
+        "me": {
+            "username": me["username"], "mt5": mt5,
+            "is_eliminated": me["id"] in state["eliminated_user_ids"],
+        },
+    }
+
+
+@api.get("/me/trading-station/tournament/{tournament_id}")
+async def station_tournament_detail(tournament_id: str, me: dict = CurrentUser):
+    t = await db.find_one(db.tournaments(), {"id": tournament_id})
+    if not t:
+        raise HTTPException(404, detail="Tournament not found")
+    if me["id"] not in t.get("registered_ids", []):
+        raise HTTPException(403, detail="Not registered for this tournament")
+    journey = _build_journey(t, me["id"])
+    # Resolve opponent usernames in the journey
+    opp_ids = [p.get("opponent_id") for p in journey["path"] if p.get("opponent_id")]
+    users_map = await _users_by_id(opp_ids) if opp_ids else {}
+    for p in journey["path"]:
+        oid = p.get("opponent_id")
+        if oid:
+            u = users_map.get(oid)
+            p["opponent"] = f"@{u['username']}" if u else "@unknown"
+    mt5 = _mt5_for_duel(tournament_id, me["id"])
+    return {
+        "id": t["id"], "name": t["name"], "stage": t["stage"],
+        "account_size": t.get("account_size", 50000),
+        "prize_pool": t["prize_pool"], "start_date": t["start_date"],
+        "journey": journey,
+        "me": {"username": me["username"], "mt5": mt5},
+    }
+
+
+# ============================================================
+# Royale state endpoint
+# ============================================================
+
+@api.get("/royale/lobbies/{lobby_id}/state")
+async def royale_lobby_state(lobby_id: str, me: dict = CurrentUser):
+    l = await db.find_one(db.royale_lobbies(), {"id": lobby_id})
+    if not l:
+        raise HTTPException(404, detail="Lobby not found")
+    participants = await _users_by_id(l.get("participant_ids", []))
+    ordered = [participants[pid] for pid in l.get("participant_ids", []) if pid in participants]
+    public_users = [_public(u).model_dump() for u in ordered]
+    leaderboard = compute_royale_leaderboard(l, public_users) if l["status"] in ("live", "completed") else []
+    state = compute_royale_state(l)
+    return {
+        "id": l["id"], "size": l["size"], "timeline": l["timeline"],
+        "timeline_seconds": l.get("timeline_seconds"),
+        "status": l["status"],
+        "started_at": l.get("started_at"), "ends_at": l.get("ends_at"),
+        "state": state, "leaderboard": leaderboard,
+        "is_in": me["id"] in l.get("participant_ids", []),
+        "im_eliminated": me["id"] in state["eliminated_user_ids"],
+    }
+
+
+# ============================================================
+# Tournament journey & bracket
+# ============================================================
+
+@api.get("/me/tournaments/journey")
+async def my_tournament_journeys(me: dict = CurrentUser):
+    tournaments = await db.find_many(db.tournaments(), {"registered_ids": me["id"]},
+                                     sort=[("start_date", -1)], limit=20)
+    journeys = []
+    opp_ids_all = set()
+    for t in tournaments:
+        j = _build_journey(t, me["id"])
+        for p in j["path"]:
+            if p.get("opponent_id"):
+                opp_ids_all.add(p["opponent_id"])
+        journeys.append(j)
+    users_map = await _users_by_id(list(opp_ids_all))
+    for j in journeys:
+        for p in j["path"]:
+            oid = p.get("opponent_id")
+            if oid:
+                u = users_map.get(oid)
+                p["opponent"] = f"@{u['username']}" if u else "@unknown"
+    return journeys
+
+
+@api.get("/tournaments/{tournament_id}/bracket")
+async def tournament_bracket(tournament_id: str, me: dict = CurrentUser):
+    t = await db.find_one(db.tournaments(), {"id": tournament_id})
+    if not t:
+        raise HTTPException(404, detail="Tournament not found")
+    bracket = t.get("bracket", {}) or {}
+    uids = set()
+    for stage in STAGE_ORDER:
+        for m in bracket.get(stage, []):
+            if m.get("user_a"):
+                uids.add(m["user_a"])
+            if m.get("user_b"):
+                uids.add(m["user_b"])
+    users_map = await _users_by_id(list(uids))
+
+    def _u(uid):
+        u = users_map.get(uid) if uid else None
+        return {"username": u["username"], "tier": u.get("tier", "Bronze"),
+                "id": uid, "is_you": uid == me["id"]} if u else None
+
+    out = {}
+    for stage in STAGE_ORDER:
+        out[stage] = []
+        for m in bracket.get(stage, []):
+            out[stage].append({
+                "match_id": m.get("match_id"),
+                "user_a": _u(m.get("user_a")), "user_b": _u(m.get("user_b")),
+                "pnl_a": m.get("pnl_a"), "pnl_b": m.get("pnl_b"),
+                "winner_id": m.get("winner_id"),
+                "winner_is_you": m.get("winner_id") == me["id"],
+                "completed": m.get("completed", False),
+                "date_label": m.get("date_label"),
+                "account_size": m.get("account_size"),
+            })
+    return {
+        "id": t["id"], "name": t["name"], "stage": t["stage"],
+        "prize_pool": t["prize_pool"],
+        "winner": _u(t.get("winner_id")),
+        "bracket": out, "stages": STAGE_ORDER,
+    }
+
 
 
 
