@@ -231,6 +231,8 @@ class Tournament(BaseModel):
     bracket: dict = Field(default_factory=dict)
     winner_id: Optional[str] = None
     account_size: int = 50000
+    # Multi Trader v4.7: timeline per stage — "1d" (1 trading day) or "5d" (5 trading days)
+    stage_length: Literal["1d", "5d"] = "5d"
 
 
 # ---------- Team (Tag Team) ----------

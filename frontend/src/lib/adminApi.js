@@ -50,3 +50,9 @@ export const adminApproveKyc = (id) => http(`/kyc/${id}/approve`, { method: "POS
 export const adminRejectKyc = (id, reason) => http(`/kyc/${id}/reject`, { method: "POST", body: { reason } });
 export const adminAuditLog = () => http("/audit-log");
 export const adminCommunitySignups = () => http("/community-signups");
+// Tournaments (Multi Trader management)
+export const adminListTournaments = (stage = "all") => http(`/tournaments?stage=${stage}`);
+export const adminCreateTournament = (body) => http("/tournaments", { method: "POST", body });
+export const adminAdvanceTournament = (id) => http(`/tournaments/${id}/advance`, { method: "POST" });
+export const adminSetStageLength = (id, stage_length) => http(`/tournaments/${id}/stage-length`, { method: "POST", body: { stage_length } });
+export const adminVoidTournament = (id, reason) => http(`/tournaments/${id}/void`, { method: "POST", body: { reason } });

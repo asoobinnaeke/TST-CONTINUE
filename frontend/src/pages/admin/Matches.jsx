@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useFetch } from "@/lib/useFetch";
 import { adminListDuels, adminVoidDuel } from "@/lib/adminApi";
+import AdminTournaments from "@/pages/admin/Tournaments";
 
 const STATUS_GROUPS = {
   active: ["live"],
@@ -11,6 +12,7 @@ const STATUS_GROUPS = {
 };
 
 export default function AdminMatches() {
+  const [section, setSection] = useState("duels");
   const [tab, setTab] = useState("active");
   const { data: duels, refetch } = useFetch(() => adminListDuels("all"), { pollMs: 4000 });
 
@@ -36,31 +38,44 @@ export default function AdminMatches() {
       <div>
         <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-[var(--muted-2)]">Manage</div>
         <h1 className="text-3xl md:text-[40px] font-bold tracking-tight text-[var(--ink)] leading-tight mt-1">Matches</h1>
-        <p className="text-[13px] text-[var(--muted)] mt-2">Monitor every duel across the platform — including the 3-minute MT5 login window before live trading begins.</p>
+        <p className="text-[13px] text-[var(--muted)] mt-2">Monitor duels and manage Multi Trader tournaments. Tournaments support 1-day or 5-day stage length and the equity-based group ranking model.</p>
       </div>
 
-      <Tabs value={tab} onValueChange={setTab} className="w-full">
-        <TabsList className="bg-[var(--surface)] border border-[var(--border)] rounded-full p-1 inline-flex h-auto" data-testid="match-tabs">
-          {["active", "inactive", "completed"].map((k) => (
-            <TabsTrigger
-              key={k}
-              value={k}
-              data-testid={`match-tab-${k}`}
-              className="rounded-full px-5 py-2 text-[13px] font-medium data-[state=active]:bg-[var(--inverse)] data-[state=active]:text-[var(--inverse-fg)]"
-            >
-              {k.charAt(0).toUpperCase() + k.slice(1)}
-              <span className="ml-2 inline-flex items-center justify-center text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-[var(--bg-soft)] text-[var(--ink)] data-[state=active]:bg-[var(--inverse-fg)] data-[state=active]:text-[var(--inverse)]">
-                {grouped[k].length}
-              </span>
-            </TabsTrigger>
-          ))}
+      {/* Section selector: Duels vs Tournaments */}
+      <Tabs value={section} onValueChange={setSection} className="w-full">
+        <TabsList className="bg-[var(--surface)] border border-[var(--border)] rounded-full p-1 inline-flex h-auto" data-testid="admin-section-tabs">
+          <TabsTrigger value="duels" data-testid="admin-section-duels" className="rounded-full px-5 py-2 text-[13px] font-medium data-[state=active]:bg-[var(--inverse)] data-[state=active]:text-[var(--inverse-fg)]">1v1 Duels</TabsTrigger>
+          <TabsTrigger value="tournaments" data-testid="admin-section-tournaments" className="rounded-full px-5 py-2 text-[13px] font-medium data-[state=active]:bg-[var(--inverse)] data-[state=active]:text-[var(--inverse-fg)]">Tournaments</TabsTrigger>
         </TabsList>
 
-        {Object.keys(STATUS_GROUPS).map((k) => (
-          <TabsContent key={k} value={k} className="mt-5">
-            <MatchTable rows={grouped[k]} group={k} onVoid={voidDuel} />
-          </TabsContent>
-        ))}
+        <TabsContent value="tournaments" className="mt-5">
+          <AdminTournaments />
+        </TabsContent>
+
+        <TabsContent value="duels" className="mt-5">
+          <Tabs value={tab} onValueChange={setTab} className="w-full">
+            <TabsList className="bg-[var(--surface)] border border-[var(--border)] rounded-full p-1 inline-flex h-auto" data-testid="match-tabs">
+              {["active", "inactive", "completed"].map((k) => (
+                <TabsTrigger
+                  key={k}
+                  value={k}
+                  data-testid={`match-tab-${k}`}
+                  className="rounded-full px-5 py-2 text-[13px] font-medium data-[state=active]:bg-[var(--inverse)] data-[state=active]:text-[var(--inverse-fg)]"
+                >
+                  {k.charAt(0).toUpperCase() + k.slice(1)}
+                  <span className="ml-2 inline-flex items-center justify-center text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-[var(--bg-soft)] text-[var(--ink)] data-[state=active]:bg-[var(--inverse-fg)] data-[state=active]:text-[var(--inverse)]">
+                    {grouped[k].length}
+                  </span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            {Object.keys(STATUS_GROUPS).map((k) => (
+              <TabsContent key={k} value={k} className="mt-5">
+                <MatchTable rows={grouped[k]} group={k} onVoid={voidDuel} />
+              </TabsContent>
+            ))}
+          </Tabs>
+        </TabsContent>
       </Tabs>
     </div>
   );

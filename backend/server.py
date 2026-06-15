@@ -1578,6 +1578,115 @@ async def admin_void_duel(duel_id: str, payload: dict, _: bool = AdminAuth):
     return {"ok": True}
 
 
+# ============================================================
+# Admin · Tournaments (Multi Trader management)
+# ============================================================
+
+STAGE_PROGRESSION = ["Registration", "Group Stage", "Round of 16",
+                     "Quarter-Finals", "Semi-Finals", "Final", "Completed"]
+
+
+@admin.get("/tournaments")
+async def admin_list_tournaments(_: bool = AdminAuth, stage: Optional[str] = None):
+    """List all tournaments for admin management with summary fields."""
+    q = {} if not stage or stage == "all" else {"stage": stage}
+    tournaments = await db.find_many(db.tournaments(), q, sort=[("start_date", -1)], limit=200)
+    return [{
+        "id": t["id"],
+        "name": t["name"],
+        "stage": t.get("stage"),
+        "stage_length": t.get("stage_length", "5d"),
+        "start_date": t.get("start_date"),
+        "prize_pool": t.get("prize_pool"),
+        "account_size": t.get("account_size", 50000),
+        "capacity": t.get("capacity", 32),
+        "registered": len(t.get("registered_ids", [])),
+        "winner_id": t.get("winner_id"),
+    } for t in tournaments]
+
+
+@admin.post("/tournaments")
+async def admin_create_tournament(payload: dict, _: bool = AdminAuth):
+    """Create a new Multi Trader tournament."""
+    name = payload.get("name")
+    if not name:
+        raise HTTPException(400, detail="name required")
+    stage_length = payload.get("stage_length", "5d")
+    if stage_length not in ("1d", "5d"):
+        raise HTTPException(400, detail="stage_length must be '1d' or '5d'")
+    t = Tournament(
+        name=name,
+        capacity=int(payload.get("capacity", 32)),
+        stage="Registration",
+        start_date=payload.get("start_date") or _now().strftime("%b %d"),
+        prize_pool=int(payload.get("prize_pool", 25000)),
+        account_size=int(payload.get("account_size", 50000)),
+        stage_length=stage_length,
+    )
+    await db.tournaments().insert_one(t.model_dump())
+    await _audit("tournament.created", target=t.id,
+                 meta={"name": name, "stage_length": stage_length, "prize_pool": t.prize_pool})
+    return {"ok": True, "id": t.id}
+
+
+@admin.post("/tournaments/{tid}/advance")
+async def admin_advance_tournament(tid: str, _: bool = AdminAuth):
+    """Advance the tournament to the next stage."""
+    t = await db.find_one(db.tournaments(), {"id": tid})
+    if not t:
+        raise HTTPException(404, detail="Tournament not found")
+    cur = t.get("stage", "Registration")
+    if cur == "Completed":
+        raise HTTPException(409, detail="Tournament already completed")
+    try:
+        next_stage = STAGE_PROGRESSION[STAGE_PROGRESSION.index(cur) + 1]
+    except (ValueError, IndexError):
+        raise HTTPException(400, detail=f"Unknown current stage: {cur}")
+    await db.tournaments().update_one({"id": tid}, {"$set": {"stage": next_stage}})
+    await _audit("tournament.advanced", target=tid, meta={"from": cur, "to": next_stage})
+    return {"ok": True, "stage": next_stage}
+
+
+@admin.post("/tournaments/{tid}/stage-length")
+async def admin_set_stage_length(tid: str, payload: dict, _: bool = AdminAuth):
+    """Set the stage_length (only before tournament starts)."""
+    t = await db.find_one(db.tournaments(), {"id": tid})
+    if not t:
+        raise HTTPException(404, detail="Tournament not found")
+    if t.get("stage") not in ("Registration",):
+        raise HTTPException(409, detail="Stage length is locked once the tournament starts")
+    sl = payload.get("stage_length")
+    if sl not in ("1d", "5d"):
+        raise HTTPException(400, detail="stage_length must be '1d' or '5d'")
+    await db.tournaments().update_one({"id": tid}, {"$set": {"stage_length": sl}})
+    await _audit("tournament.stage_length_changed", target=tid, meta={"to": sl})
+    return {"ok": True, "stage_length": sl}
+
+
+@admin.post("/tournaments/{tid}/void")
+async def admin_void_tournament(tid: str, payload: dict, _: bool = AdminAuth):
+    """Void a tournament. Refunds approximate entry fees to all registered traders."""
+    t = await db.find_one(db.tournaments(), {"id": tid})
+    if not t:
+        raise HTTPException(404, detail="Tournament not found")
+    reason = payload.get("reason", "Voided by admin")
+    entry_fee = max(100, int(t.get("prize_pool", 0) / max(1, t.get("capacity", 32) * 1.4)))
+    await db.tournaments().update_one({"id": tid}, {"$set": {
+        "stage": "Completed", "void_reason": reason,
+    }})
+    for uid in t.get("registered_ids", []):
+        await db.transactions().insert_one({
+            "id": _uid_str(), "user_id": uid, "type": "Refund",
+            "amount": entry_fee, "status": "completed",
+            "reference": f"Tournament {tid} voided",
+            "created_at": _now().isoformat(),
+        })
+    await _audit("tournament.voided", target=tid, meta={"reason": reason})
+    return {"ok": True, "refunded": len(t.get("registered_ids", []))}
+
+
+
+
 @admin.get("/finance/withdrawals")
 async def admin_withdrawals(_: bool = AdminAuth):
     docs = await db.transactions().find(
