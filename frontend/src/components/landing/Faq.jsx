@@ -22,7 +22,7 @@ export default function Faq() {
           <div className="lg:col-span-7">
             <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-3 py-1.5 mb-4">
               <HelpCircle className="w-3.5 h-3.5 text-[#B4E04C]" />
-              <span className="text-[11px] font-mono uppercase tracking-[0.18em] text-white">FAQ · 65+ answers</span>
+              <span className="text-[11px] font-mono uppercase tracking-[0.18em] text-white">FAQ · 69 answers</span>
             </div>
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tighter text-white leading-[1.05]">
               Got questions? <br className="hidden sm:block" />

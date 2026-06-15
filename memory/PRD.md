@@ -8,7 +8,16 @@ Lime green #B4E04C + soft purple #A78BFA on off-white #FAFAF7. Satoshi font. Mod
 
 ## What's Built
 
-### v4.5 (2026-02-15) — Dark landing + standalone Affiliate nav (CURRENT)
+### v4.6 (2026-02-15) — Dedicated FAQ page (CURRENT)
+- **New `/faq` route** with comprehensive product-segmented FAQ — 69 detailed Q&As across 8 sections in order: **General** (10) · **1v1 Duel** (11) · **Trading Royale** (9) · **Multi Trader** (8) · **Tag Team** (7) · **Community Battles** (6) · **Affiliate Program** (8) · **Trading & MT5** (10).
+- **Sticky desktop sidebar** with active-section highlighting based on scroll position. **Mobile horizontal-scroll pill selector** below the hero.
+- **Live search** at the top of the page filters questions + answers in real-time across all sections with `<mark>` highlight on matches; empty-state shown when nothing matches.
+- **Animated accordions** (Framer Motion AnimatePresence) for question expand/collapse.
+- **Landing FAQ section converted to slim teaser** linking to `/faq` with topic pills and "See full FAQ" CTA.
+- **Nav FAQ link** is now a Router Link to `/faq` (no more in-page scroll).
+- **Tests**: 12/12 frontend Playwright tests pass — page load, hero copy, sidebar items + counts, accordions, search + highlight, empty-state, anchor nav, back-to-landing, mobile responsive, regression of Affiliate/Products dropdown.
+
+### v4.5 (2026-02-15) — Dark landing + standalone Affiliate nav
 - **Entire landing page rebuilt in the dark, graphics-first aesthetic** — base `#0F0F12`, elevated surfaces `#16161D`, lime + purple accents, mono labels. Every section (Hero, Mission, Problem, ProductSuite, HowItWorks, Pricing, slim Affiliate teaser, FAQ, Terms, Ticker, Footer) now matches the product-page treatment.
 - **Landing now uses `ProductNav`** (dark variant) instead of the cream `Nav`, with hash-scroll preserved on landing and cross-page navigation when on other routes.
 - **Affiliate moved out of the Products dropdown** — Products menu now lists exactly 5 items (1v1 Duel, Trading Royale, Multi Trader, Tag Team, Community Battles). **Affiliate is its own standalone top-level nav item** that routes directly to `/products/affiliate` (no more scrolling to a `#affiliate` section).
