@@ -26,7 +26,7 @@ export default function Footer() {
     <footer
       id="footer"
       data-testid="footer-section"
-      className="relative bg-[#FAFAF7] border-t border-[#ECECEA] pt-20 pb-10"
+      className="relative bg-[#0F0F12] border-t border-white/10 pt-20 pb-10"
     >
       <div className="max-w-7xl mx-auto px-5 lg:px-8">
         {/* Closing CTA */}
@@ -43,11 +43,11 @@ export default function Footer() {
               <span className="text-[#B4E04C]">Start trading against people.</span>
             </h2>
             <div className="mt-10 flex flex-wrap gap-3">
-              <button className="inline-flex items-center gap-2 bg-[#B4E04C] text-[#0F0F12] font-semibold text-[15px] px-6 py-3.5 rounded-full hover:bg-white transition-all hover:-translate-y-0.5">
+              <button className="inline-flex items-center gap-2 bg-[#B4E04C] text-white font-semibold text-[15px] px-6 py-3.5 rounded-full hover:bg-[#16161D] transition-all hover:-translate-y-0.5">
                 Create your account
                 <ArrowUpRight className="w-4 h-4" strokeWidth={2.5} />
               </button>
-              <button className="inline-flex items-center gap-2 bg-white/10 backdrop-blur border border-white/15 text-white font-medium text-[15px] px-6 py-3.5 rounded-full hover:bg-white/15 transition-colors">
+              <button className="inline-flex items-center gap-2 bg-[#16161D]/10 backdrop-blur border border-white/15 text-white font-medium text-[15px] px-6 py-3.5 rounded-full hover:bg-[#16161D]/15 transition-colors">
                 Talk to us
               </button>
             </div>
@@ -57,7 +57,7 @@ export default function Footer() {
         <div className="grid lg:grid-cols-12 gap-12 mb-16">
           <div className="lg:col-span-5">
             <img src={LOGO_DARK} alt="The Select Traders" className="h-12 w-auto -ml-1" />
-            <p className="mt-5 text-[#4B5563] max-w-md leading-relaxed">
+            <p className="mt-5 text-white/65 max-w-md leading-relaxed">
               The peer-to-peer arena for competitive traders. Trade smart. Compete harder.
             </p>
             <div className="mt-7 flex items-center gap-2">
@@ -72,7 +72,7 @@ export default function Footer() {
                   href={`#${label}`}
                   data-testid={`social-${label}`}
                   aria-label={label}
-                  className="w-10 h-10 grid place-items-center bg-white border border-[#ECECEA] rounded-full text-[#1F2024] hover:bg-[#0F0F12] hover:text-white transition-colors"
+                  className="w-10 h-10 grid place-items-center bg-[#16161D] border border-white/10 rounded-full text-white/85 hover:bg-[#0F0F12] hover:text-white transition-colors"
                 >
                   <Icon className="w-4 h-4" />
                 </a>
@@ -83,7 +83,7 @@ export default function Footer() {
           <div className="lg:col-span-7 grid grid-cols-2 md:grid-cols-4 gap-8">
             {cols.map((c) => (
               <div key={c.title}>
-                <div className="text-xs font-mono uppercase tracking-[0.18em] text-[#6B7280] mb-4">
+                <div className="text-xs font-mono uppercase tracking-[0.18em] text-white/45 mb-4">
                   {c.title}
                 </div>
                 <ul className="space-y-3">
@@ -91,7 +91,7 @@ export default function Footer() {
                     <li key={l}>
                       <a
                         href={`#${l.toLowerCase().replace(/[^a-z0-9]/g, "-")}`}
-                        className="text-[#1F2024] hover:text-[#0F0F12] text-[14px] transition-colors"
+                        className="text-white/85 hover:text-white text-[14px] transition-colors"
                       >
                         {l}
                       </a>
@@ -103,11 +103,11 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-[#ECECEA] pt-8 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div className="text-xs font-mono text-[#6B7280]">
+        <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="text-xs font-mono text-white/45">
             © 2026 The Select Traders. All rights reserved.
           </div>
-          <div className="text-xs text-[#6B7280]">
+          <div className="text-xs text-white/45">
             Trade smart. Compete harder.
           </div>
         </div>

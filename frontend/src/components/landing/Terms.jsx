@@ -13,22 +13,22 @@ export default function Terms() {
   return (
     <section
       data-testid="terms-section"
-      className="relative py-24 lg:py-32 border-t border-[#ECECEA] bg-[#F5F5F2]"
+      className="relative py-24 lg:py-32 border-t border-white/10 bg-[#0B0B0F]"
     >
       <div className="max-w-5xl mx-auto px-5 lg:px-8">
-        <div className="bg-white rounded-3xl border border-[#ECECEA] p-8 lg:p-12">
+        <div className="bg-[#16161D] rounded-3xl border border-white/10 p-8 lg:p-12">
           <div className="flex items-start gap-4 mb-6">
-            <div className="w-12 h-12 rounded-2xl bg-[#EDE7FE] grid place-items-center text-[#7C3AED] shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-[#A78BFA]/15 grid place-items-center text-[#7C3AED] shrink-0">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-xs font-mono uppercase tracking-[0.18em] text-[#6B7280]">
+              <div className="text-xs font-mono uppercase tracking-[0.18em] text-white/45">
                 07 — Legal
               </div>
-              <h2 className="mt-1 text-2xl md:text-3xl font-bold tracking-tight text-[#0F0F12]">
+              <h2 className="mt-1 text-2xl md:text-3xl font-bold tracking-tight text-white">
                 Fair rules. Clearly written.
               </h2>
-              <p className="mt-2 text-[14px] text-[#6B7280] max-w-lg">
+              <p className="mt-2 text-[14px] text-white/45 max-w-lg">
                 We keep the rulebook short, transparent and trader-first. Read the highlights below or open the full Terms &amp; Conditions.
               </p>
             </div>
@@ -36,7 +36,7 @@ export default function Terms() {
 
           <ul className="grid md:grid-cols-2 gap-x-10 gap-y-3 mb-8">
             {previewPoints.map((p, i) => (
-              <li key={i} className="flex gap-3 text-[14px] text-[#1F2024]">
+              <li key={i} className="flex gap-3 text-[14px] text-white/85">
                 <span className="font-mono text-[#A78BFA] shrink-0 font-semibold">
                   {String(i + 1).padStart(2, "0")}
                 </span>

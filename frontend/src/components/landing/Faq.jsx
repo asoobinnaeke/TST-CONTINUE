@@ -53,19 +53,19 @@ export default function Faq() {
     <section
       id="faq"
       data-testid="faq-section"
-      className="relative py-24 lg:py-32 border-t border-[#ECECEA]"
+      className="relative py-24 lg:py-32 border-t border-white/10"
     >
       <div className="max-w-7xl mx-auto px-5 lg:px-8 grid lg:grid-cols-12 gap-12">
         <div className="lg:col-span-4">
-          <div className="text-xs font-mono uppercase tracking-[0.18em] text-[#6B7280]">
+          <div className="text-xs font-mono uppercase tracking-[0.18em] text-white/45">
             06 — Answers
           </div>
-          <h2 className="mt-3 text-4xl md:text-5xl font-bold tracking-tight text-[#0F0F12] leading-[1.05]">
+          <h2 className="mt-3 text-4xl md:text-5xl font-bold tracking-tight text-white leading-[1.05]">
             Frequently asked questions.
           </h2>
-          <p className="mt-5 text-[15px] text-[#4B5563]">
+          <p className="mt-5 text-[15px] text-white/65">
             Can't find what you're looking for?{" "}
-            <a href="#footer" className="text-[#0F0F12] underline underline-offset-4 decoration-[#B4E04C] decoration-2 hover:decoration-[#A78BFA]">
+            <a href="#footer" className="text-white underline underline-offset-4 decoration-[#B4E04C] decoration-2 hover:decoration-[#A78BFA]">
               Get in touch
             </a>
             .
@@ -73,7 +73,7 @@ export default function Faq() {
         </div>
 
         <div className="lg:col-span-8">
-          <Accordion type="single" collapsible className="divide-y divide-[#ECECEA] border-y border-[#ECECEA]">
+          <Accordion type="single" collapsible className="divide-y divide-[#ECECEA] border-y border-white/10">
             {items.map((item, i) => (
               <AccordionItem
                 key={i}
@@ -81,10 +81,10 @@ export default function Faq() {
                 data-testid={`faq-item-${i}`}
                 className="border-none [&_*]:!no-underline"
               >
-                <AccordionTrigger className="text-left text-[#0F0F12] font-semibold text-[16px] md:text-[17px] py-6 hover:text-[#0F0F12]">
+                <AccordionTrigger className="text-left text-white font-semibold text-[16px] md:text-[17px] py-6 hover:text-white">
                   {item.q}
                 </AccordionTrigger>
-                <AccordionContent className="text-[#4B5563] leading-relaxed pb-6 text-[15px] pr-8">
+                <AccordionContent className="text-white/65 leading-relaxed pb-6 text-[15px] pr-8">
                   {item.a}
                 </AccordionContent>
               </AccordionItem>

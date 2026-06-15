@@ -31,17 +31,17 @@ export default function Pricing() {
     <section
       id="pricing"
       data-testid="pricing-section"
-      className="relative py-24 lg:py-32 border-t border-[#ECECEA]"
+      className="relative py-24 lg:py-32 border-t border-white/10"
     >
       <div className="max-w-7xl mx-auto px-5 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <div className="text-xs font-mono uppercase tracking-[0.18em] text-[#6B7280]">
+          <div className="text-xs font-mono uppercase tracking-[0.18em] text-white/45">
             05 — Plans
           </div>
-          <h2 className="mt-3 text-4xl md:text-5xl font-bold tracking-tight text-[#0F0F12] leading-[1.05]">
+          <h2 className="mt-3 text-4xl md:text-5xl font-bold tracking-tight text-white leading-[1.05]">
             Choose your plan.
           </h2>
-          <p className="mt-5 text-[15px] text-[#4B5563]">
+          <p className="mt-5 text-[15px] text-white/65">
             Free to watch. Free to join. Pro to compete your way.
           </p>
         </div>
@@ -50,39 +50,39 @@ export default function Pricing() {
           {/* FREE */}
           <div
             data-testid="pricing-free-card"
-            className="relative bg-white rounded-3xl border border-[#ECECEA] p-8 lg:p-10"
+            className="relative bg-[#16161D] rounded-3xl border border-white/10 p-8 lg:p-10"
           >
-            <div className="text-sm font-medium text-[#6B7280]">Free</div>
+            <div className="text-sm font-medium text-white/45">Free</div>
             <div className="mt-2 flex items-baseline gap-1.5">
-              <span className="font-bold text-5xl text-[#0F0F12] tracking-tight">$0</span>
-              <span className="text-sm font-mono text-[#6B7280]">/ month</span>
+              <span className="font-bold text-5xl text-white tracking-tight">$0</span>
+              <span className="text-sm font-mono text-white/45">/ month</span>
             </div>
-            <p className="mt-3 text-sm text-[#4B5563]">
+            <p className="mt-3 text-sm text-white/65">
               Watch, learn and compete in standard duels.
             </p>
             <button
               data-testid="pricing-free-cta"
-              className="mt-7 w-full inline-flex items-center justify-center gap-2 bg-[#FAFAF7] border border-[#ECECEA] text-[#0F0F12] font-medium text-[14px] py-3.5 rounded-full hover:bg-[#F5F5F2] transition-all"
+              className="mt-7 w-full inline-flex items-center justify-center gap-2 bg-[#0F0F12] border border-white/10 text-white font-medium text-[14px] py-3.5 rounded-full hover:bg-[#0B0B0F] transition-all"
             >
               Start free <ArrowUpRight className="w-4 h-4" />
             </button>
-            <div className="mt-8 border-t border-[#F1F1EF] pt-6">
-              <div className="text-xs font-mono uppercase tracking-[0.18em] text-[#6B7280] mb-4">
+            <div className="mt-8 border-t border-white/5 pt-6">
+              <div className="text-xs font-mono uppercase tracking-[0.18em] text-white/45 mb-4">
                 What's included
               </div>
               <ul className="space-y-3">
                 {freeFeatures.map((f) => (
                   <li key={f.label} className="flex gap-3 text-[14px]">
                     {f.ok ? (
-                      <span className="w-5 h-5 rounded-full bg-[#E6F4C2] grid place-items-center shrink-0 mt-0.5">
-                        <Check className="w-3 h-3 text-[#0F0F12]" strokeWidth={3} />
+                      <span className="w-5 h-5 rounded-full bg-[#B4E04C]/15 grid place-items-center shrink-0 mt-0.5">
+                        <Check className="w-3 h-3 text-white" strokeWidth={3} />
                       </span>
                     ) : (
-                      <span className="w-5 h-5 rounded-full bg-[#FEE2E2] grid place-items-center shrink-0 mt-0.5">
-                        <X className="w-3 h-3 text-[#DC2626]" strokeWidth={3} />
+                      <span className="w-5 h-5 rounded-full bg-[#EF4444]/15 grid place-items-center shrink-0 mt-0.5">
+                        <X className="w-3 h-3 text-[#EF4444]" strokeWidth={3} />
                       </span>
                     )}
-                    <span className={f.ok ? "text-[#1F2024]" : "text-[#9CA3AF] line-through"}>
+                    <span className={f.ok ? "text-white/85" : "text-white/35 line-through"}>
                       {f.label}
                     </span>
                   </li>
@@ -115,7 +115,7 @@ export default function Pricing() {
               </p>
               <button
                 data-testid="pricing-pro-cta"
-                className="mt-7 w-full inline-flex items-center justify-center gap-2 bg-[#B4E04C] text-[#0F0F12] font-semibold text-[14px] py-3.5 rounded-full hover:bg-white transition-all hover:-translate-y-0.5"
+                className="mt-7 w-full inline-flex items-center justify-center gap-2 bg-[#B4E04C] text-white font-semibold text-[14px] py-3.5 rounded-full hover:bg-[#16161D] transition-all hover:-translate-y-0.5"
               >
                 Go Pro <ArrowUpRight className="w-4 h-4" strokeWidth={2.5} />
               </button>
@@ -131,7 +131,7 @@ export default function Pricing() {
                   {proFeatures.map((f, i) => (
                     <li key={i} className="flex gap-3 text-[14px]">
                       <span className="w-5 h-5 rounded-full bg-[#B4E04C] grid place-items-center shrink-0 mt-0.5">
-                        <Check className="w-3 h-3 text-[#0F0F12]" strokeWidth={3} />
+                        <Check className="w-3 h-3 text-white" strokeWidth={3} />
                       </span>
                       <span className={i === 0 ? "text-white font-semibold" : "text-white/85"}>
                         {f}

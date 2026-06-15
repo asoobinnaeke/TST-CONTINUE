@@ -55,20 +55,20 @@ export default function ProductSuite() {
     <section
       id="products"
       data-testid="product-suite-section"
-      className="relative py-24 lg:py-32 border-t border-[#ECECEA]"
+      className="relative py-24 lg:py-32 border-t border-white/10"
     >
       <div className="max-w-7xl mx-auto px-5 lg:px-8">
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-14">
           <div className="max-w-2xl">
-            <div className="text-xs font-mono uppercase tracking-[0.18em] text-[#6B7280]">
+            <div className="text-xs font-mono uppercase tracking-[0.18em] text-white/45">
               03 — The arena
             </div>
-            <h2 className="mt-3 text-4xl md:text-5xl font-bold tracking-tight text-[#0F0F12] leading-[1.05]">
+            <h2 className="mt-3 text-4xl md:text-5xl font-bold tracking-tight text-white leading-[1.05]">
               Five ways <br />
               to compete.
             </h2>
           </div>
-          <p className="lg:max-w-sm text-[15px] text-[#4B5563] leading-relaxed">
+          <p className="lg:max-w-sm text-[15px] text-white/65 leading-relaxed">
             One platform. Your skill, your rules. From a 5-minute royale to a multi-week tournament bracket.
           </p>
         </div>
@@ -89,22 +89,22 @@ export default function ProductSuite() {
 
 function ProductCard({ product, className = "", featured }) {
   const accentBg = {
-    lime: "bg-[#E6F4C2]",
-    purple: "bg-[#EDE7FE]",
-    neutral: "bg-[#F3F4F6]",
+    lime: "bg-[#B4E04C]/15",
+    purple: "bg-[#A78BFA]/15",
+    neutral: "bg-[#16161D]/5",
   }[product.accent];
 
   const accentText = {
-    lime: "text-[#0F0F12]",
+    lime: "text-white",
     purple: "text-[#7C3AED]",
-    neutral: "text-[#1F2024]",
+    neutral: "text-white/85",
   }[product.accent];
 
   return (
     <Link
       to={product.href}
       data-testid={`product-card-${product.name.toLowerCase().replace(/\s+/g, "-")}`}
-      className={`group relative bg-white rounded-3xl border border-[#ECECEA] p-6 lg:p-8 hover:-translate-y-1 hover:shadow-[0_18px_36px_-12px_rgba(15,15,18,0.1)] transition-all flex flex-col cursor-pointer ${className}`}
+      className={`group relative bg-[#16161D] rounded-3xl border border-white/10 p-6 lg:p-8 hover:-translate-y-1 hover:shadow-[0_18px_36px_-12px_rgba(0,0,0,0.5)] transition-all flex flex-col cursor-pointer ${className}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className={`w-12 h-12 rounded-2xl grid place-items-center ${accentBg} ${accentText}`}>
@@ -114,7 +114,7 @@ function ProductCard({ product, className = "", featured }) {
           <span
             className={`text-[11px] font-medium px-2.5 py-1 rounded-full ${
               product.badge === "Coming soon"
-                ? "bg-[#F3F4F6] text-[#6B7280]"
+                ? "bg-[#16161D]/5 text-white/45"
                 : "bg-[#0F0F12] text-white inline-flex items-center gap-1.5"
             }`}
           >
@@ -126,25 +126,25 @@ function ProductCard({ product, className = "", featured }) {
         )}
       </div>
 
-      <h3 className={`mt-${featured ? "8" : "5"} font-bold tracking-tight text-[#0F0F12] ${featured ? "text-3xl md:text-4xl leading-[1.05]" : "text-xl"}`}>
+      <h3 className={`mt-${featured ? "8" : "5"} font-bold tracking-tight text-white ${featured ? "text-3xl md:text-4xl leading-[1.05]" : "text-xl"}`}>
         {product.name}
       </h3>
-      <p className={`mt-2 text-[#4B5563] ${featured ? "text-lg max-w-md" : "text-[15px]"}`}>
+      <p className={`mt-2 text-white/65 ${featured ? "text-lg max-w-md" : "text-[15px]"}`}>
         {product.tagline}
       </p>
-      <p className="mt-3 text-sm font-mono text-[#6B7280]">{product.detail}</p>
+      <p className="mt-3 text-sm font-mono text-white/45">{product.detail}</p>
 
-      <div className={`mt-${featured ? "auto pt-8" : "5"} flex items-center gap-1.5 text-sm font-medium text-[#0F0F12] group-hover:gap-2 transition-all`}>
+      <div className={`mt-${featured ? "auto pt-8" : "5"} flex items-center gap-1.5 text-sm font-medium text-white group-hover:gap-2 transition-all`}>
         Explore {product.name}
         <ArrowUpRight className="w-4 h-4" strokeWidth={2} />
       </div>
 
       {featured && (
         <div className="absolute right-0 bottom-0 w-2/5 h-2/3 pointer-events-none">
-          <div className="absolute right-8 bottom-8 bg-[#FAFAF7] border border-[#ECECEA] rounded-2xl p-4 w-56 shadow-[0_12px_24px_-12px_rgba(15,15,18,0.12)]">
-            <div className="text-xs font-mono text-[#6B7280]">Top winner today</div>
+          <div className="absolute right-8 bottom-8 bg-[#0F0F12] border border-white/10 rounded-2xl p-4 w-56 shadow-[0_12px_24px_-12px_rgba(15,15,18,0.12)]">
+            <div className="text-xs font-mono text-white/45">Top winner today</div>
             <div className="mt-2 text-2xl font-mono font-semibold text-[#10B981]">+$11,420</div>
-            <div className="mt-1 flex items-center gap-2 text-xs text-[#6B7280]">
+            <div className="mt-1 flex items-center gap-2 text-xs text-white/45">
               <span className="w-1.5 h-1.5 bg-[#B4E04C] rounded-full" /> @PaperHandsNoMore · $250K duel
             </div>
           </div>

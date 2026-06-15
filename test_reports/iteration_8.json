@@ -1,0 +1,45 @@
+{
+  "summary": "E2E frontend verification of dark-themed landing redesign and standalone Affiliate nav item. All 13 requested features verified — landing renders dark (#0F0F12), Products dropdown contains exactly the 5 expected items (Affiliate excluded), Affiliate nav is a standalone Router Link to /products/affiliate (tag=A, href=/products/affiliate), all 6 product pages render with hero/stats/infographic, mobile @390px has no horizontal scroll & hamburger works, /app/* routes all return 200.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/products/affiliate (Affiliate Tree infographic)", "issues": ["Recharts ResponsiveContainer emits 'width(-1) and height(-1) of chart should be greater than 0' console warnings on initial mount. Chart still renders visibly, but warning indicates container has no resolved dimensions at first paint — likely needs minHeight or fixed height on the wrapper. Cosmetic, non-blocking."]}
+    ]
+  },
+  "test_results_detail": {
+    "landing_dark_theme": "PASS — computed bg = rgb(15,15,18) = #0F0F12",
+    "products_dropdown_5_items": "PASS — items: ['1v1 Duel','Trading Royale','Multi Trader','Tag Team','Community Battles']",
+    "affiliate_excluded_from_dropdown": "PASS",
+    "affiliate_is_router_link": "PASS — <A> tag with href=/products/affiliate",
+    "affiliate_nav_navigates_to_product_page": "PASS — URL becomes /products/affiliate",
+    "product_pages_all_render": "PASS — duel/royale/tournament/tagteam/community/affiliate all have hero-title + hero-stats + model-infographic",
+    "back_to_landing": "PASS — returns to /",
+    "hash_nav_from_product_page": "PASS — clicking 'How it works' from /products/duel navigates back to landing",
+    "mobile_390px_no_horizontal_scroll": "PASS — scrollWidth==clientWidth==390",
+    "mobile_hamburger_opens": "PASS — nav-mobile-menu visible after toggle",
+    "productsuite_card_click": "PASS — 5 product-card-* present; duel card click navigates to /products/duel",
+    "app_routes_regression": "PASS — /app, /app/duel, /app/royale, /app/tournament, /app/station, /app/affiliate all return 200 with content"
+  },
+  "test_report_links": [],
+  "action_items": [
+    "(Optional, low priority) Fix Recharts ResponsiveContainer warning on Affiliate Tree by giving parent a fixed/min height so initial measurement isn't -1."
+  ],
+  "critical_code_review_comments": [
+    "ProductNav.jsx correctly differentiates href-Link items vs goto-button items via ternary — clean implementation.",
+    "Landing.jsx hash-scroll uses requestAnimationFrame which is correct for late-mounted sections.",
+    "All interactive nav elements carry data-testid — good testability."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped per request)", "frontend": "100%"},
+  "test_credentials": "N/A — public pages",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Landing redesign and standalone Affiliate nav are fully verified. The only minor cosmetic finding is a Recharts width/height=-1 console warning on the Affiliate Tree infographic at /products/affiliate — chart still renders but parent container needs a fixed/min height for clean initial measurement. Backend not tested (frontend-only request).",
+  "rca of the issue": "N/A — no functional bug found."
+}

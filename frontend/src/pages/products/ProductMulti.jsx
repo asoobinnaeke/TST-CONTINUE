@@ -1,67 +1,146 @@
-import { Trophy } from "lucide-react";
-import ProductPageLayout from "@/components/products/ProductPageLayout";
+import { Trophy, Crown, Users, Calendar, Coins, Layers, Award, Medal } from "lucide-react";
+import { motion } from "framer-motion";
+import ProductNav from "@/components/products/ProductNav";
+import Footer from "@/components/landing/Footer";
+import { SectionHeader, NeonBeam, BentoRuleCard, StatStrip, BackToLanding, BottomCTA, StatPyramid } from "@/components/products/ProductPrimitives";
+import { LeaderboardRace } from "@/components/products/ProductInfographics";
 
-const stages = [
-  { stage: "Round of 16 qualifiers", share: "25%", amount: "Split 16 ways", featured: false },
-  { stage: "Quarter-final qualifiers", share: "25%", amount: "Split 8 ways", featured: false },
-  { stage: "Semi-finalists", share: "20%", amount: "Split 4 ways", featured: false },
-  { stage: "Finalist (Runner-up)", share: "15%", amount: "Full share", featured: false },
-  { stage: "Champion", share: "15%", amount: "Full share + glory", featured: true },
+const PRIZE_TIERS = [
+  { label: "Champion", share: "15%", amount: "$7.5K", featured: true },
+  { label: "Runner-up", share: "15%", amount: "$7.5K" },
+  { label: "Semi-finalists", share: "20% ÷ 4", amount: "$2.5K each" },
+  { label: "QF qualifiers", share: "25% ÷ 8", amount: "$1.5K each" },
+  { label: "R16 qualifiers", share: "25% ÷ 16", amount: "$780 each" },
 ];
 
 export default function ProductMulti() {
   return (
-    <ProductPageLayout
-      eyebrow="Product · 03"
-      name="Multi Trader"
-      tagline="Group stages. Knockouts. One champion."
-      description="32 traders, 8 groups of 4. Over multiple weeks, the best advance from a round-robin group stage through Round of 16, Quarter-Finals, Semi-Finals and the Final. Money is paid out at every qualifying stage — not just the top 3."
-      icon={Trophy}
-      accent="lime"
-      stats={[
-        { label: "Field", value: "32 traders" },
-        { label: "Groups", value: "8 × 4" },
-        { label: "Stages", value: "Group → R16 → QF → SF → Final" },
-        { label: "Pool paid out", value: "100%" },
-      ]}
-      model={{
-        title: "Earn at every stage, not just the podium.",
-        paragraphs: [
-          "Most prop firms pay only the top 3. We pay everyone who advances. Qualify for the Round of 16 and you've already earned. Reach the Quarter-Finals and you've doubled up. Make Semi-Finals and you're in real-money territory. The Champion takes 15% of the pool — but so does the runner-up.",
-          "Every match in every stage is a sealed duel: equal accounts, same clock, no negotiated edges. Stage advancement is decided by equity at match end.",
-        ],
-        bullets: [
-          "32 traders divided into 8 groups of 4",
-          "Top 2 from each group advance after Week 1 round-robin",
-          "Weekly knockout rounds — 16 → 8 → 4 → 2 → 1",
-          "Per-stage prize splits paid on stage completion",
-          "Full bracket and group standings visible to all",
-        ],
-      }}
-      rules={[
-        { k: "Field", v: "32 traders per tournament" },
-        { k: "Account size", v: "$50K – $100K depending on tournament" },
-        { k: "Group stage format", v: "Round-robin (3 matches per trader)" },
-        { k: "Group qualification", v: "Top 2 by W-D-L, then equity tiebreaker" },
-        { k: "Knockout format", v: "Single match per round (no replays)" },
-        { k: "Match duration", v: "4h per knockout match" },
-        { k: "Group stage duration", v: "1 week" },
-        { k: "Knockouts duration", v: "1 week per round (4 weeks total)" },
-        { k: "3rd place match", v: "Yes — between SF losers" },
-        { k: "Total tournament length", v: "5 weeks" },
-      ]}
-      prize={{
-        title: "Pool distributed across 5 stages.",
-        subtitle: "Every trader who advances earns a share. The Champion's 15% is paid as a full single share; lower stages are split across all qualifiers at that stage.",
-        headers: ["Stage", "Pool share", "Per qualifier"],
-        rows: stages,
-      }}
-      cta={{
-        primaryLabel: "Enter a tournament",
-        primaryHref: "/app/tournament",
-        secondaryLabel: "View my journey",
-        secondaryHref: "/app/tournament",
-      }}
-    />
+    <main className="min-h-screen bg-[#0F0F12] text-white" data-testid="product-page-multi">
+      <ProductNav />
+
+      <section className="relative pt-32 pb-20 lg:pt-40 lg:pb-28 overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-[#B4E04C] rounded-full blur-[160px] opacity-15" />
+          <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: "linear-gradient(to right, #FFFFFF 1px, transparent 1px), linear-gradient(to bottom, #FFFFFF 1px, transparent 1px)", backgroundSize: "48px 48px" }} />
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-5 lg:px-8">
+          <BackToLanding />
+
+          <div className="mt-10 text-center max-w-5xl mx-auto">
+            <div className="flex items-center justify-center gap-3 mb-7">
+              <div className="w-12 h-12 rounded-2xl bg-[#B4E04C] grid place-items-center">
+                <Trophy className="w-5 h-5 text-[#0F0F12]" strokeWidth={2.5} />
+              </div>
+              <div className="text-[11px] font-mono uppercase tracking-[0.28em] text-white/40">Product · 03</div>
+            </div>
+            <motion.h1 data-testid="hero-title" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
+              className="text-[clamp(48px,9vw,128px)] font-black tracking-[-0.04em] leading-[0.88] text-white">
+              32 ENTER. <br /> ONE LIFTS <span className="text-[#B4E04C]">THE CUP.</span>
+            </motion.h1>
+            <p className="mt-7 text-lg md:text-xl text-white/65 max-w-2xl mx-auto leading-relaxed">
+              Group stage. Knockouts. A real championship — not a leaderboard with 5,000 names. <span className="text-[#B4E04C] font-semibold">Every stage pays.</span>
+            </p>
+            <div className="mt-9 flex flex-wrap gap-3 justify-center">
+              <NeonBeam href="/app/tournament" dataTestid="product-cta-primary">Enter the tournament</NeonBeam>
+              <a href="/app/tournament" data-testid="product-cta-secondary" className="inline-flex items-center gap-2 bg-white/5 border border-white/15 text-white font-medium text-[14px] px-5 py-3.5 rounded-full hover:bg-white/10">My journey</a>
+            </div>
+          </div>
+
+          {/* Podium graphic */}
+          <div className="mt-16 max-w-3xl mx-auto">
+            <Podium />
+          </div>
+
+          <div className="mt-14">
+            <StatStrip items={[
+              { label: "Field", value: "32" },
+              { label: "Groups", value: "8 × 4" },
+              { label: "Stages", value: "5", sub: "Group → Final" },
+              { label: "Pool paid out", value: "100%" },
+            ]} />
+          </div>
+        </div>
+      </section>
+
+      {/* THE MODEL */}
+      <section className="relative py-24 lg:py-32 border-t border-white/5">
+        <div className="max-w-7xl mx-auto px-5 lg:px-8 grid lg:grid-cols-12 gap-10 lg:gap-16 items-center">
+          <div className="lg:col-span-5">
+            <SectionHeader kicker="THE MODEL" title="The leaderboard is alive." sub="Every match shuffles the standings in real-time. Win, climb. Lose, drop. Make the cut, advance to knockouts." />
+            <ul className="mt-7 space-y-3 text-[14.5px] text-white/70">
+              {[
+                "32 traders split into 8 groups of 4",
+                "Round-robin in Week 1 — top 2 advance",
+                "Weekly knockouts: R16 → QF → SF → Final",
+                "Every qualifying stage earns prize money",
+              ].map((b, i) => (
+                <motion.li key={i} initial={{ opacity: 0, x: -10 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.4, delay: i * 0.08 }} className="flex items-start gap-3">
+                  <span className="w-1.5 h-1.5 mt-2 bg-[#B4E04C] shrink-0 rounded-full shadow-[0_0_8px_#B4E04C]" />
+                  <span>{b}</span>
+                </motion.li>
+              ))}
+            </ul>
+          </div>
+          <div className="lg:col-span-7">
+            <LeaderboardRace />
+          </div>
+        </div>
+      </section>
+
+      {/* RULES */}
+      <section className="relative py-24 lg:py-32 border-t border-white/5 bg-[#0B0B0F]">
+        <div className="max-w-7xl mx-auto px-5 lg:px-8">
+          <SectionHeader kicker="RULES OF ENGAGEMENT" title="5 weeks. 5 stages. Real championship." />
+          <div className="mt-12 grid grid-cols-2 lg:grid-cols-4 gap-4" data-testid="rules-grid">
+            <BentoRuleCard icon={Users} title="Field" value="32" sub="Per tournament" />
+            <BentoRuleCard icon={Layers} title="Groups" value="8 × 4" sub="Top 2 advance each" />
+            <BentoRuleCard icon={Coins} title="Account" value="$50K – $100K" sub="By tournament tier" />
+            <BentoRuleCard icon={Calendar} title="Group stage" value="Week 1" sub="Round-robin · 3 matches" />
+            <BentoRuleCard icon={Trophy} title="R16" value="Week 2" sub="Single match · win-or-out" />
+            <BentoRuleCard icon={Trophy} title="QF" value="Week 3" sub="Single match · win-or-out" />
+            <BentoRuleCard icon={Trophy} title="SF" value="Week 4" sub="Single match · win-or-out" />
+            <BentoRuleCard icon={Crown} title="Final" value="Week 5" sub="Champion + Runner-up payouts" />
+          </div>
+        </div>
+      </section>
+
+      {/* PRIZE PYRAMID */}
+      <section className="relative py-24 lg:py-32 border-t border-white/5">
+        <div className="max-w-7xl mx-auto px-5 lg:px-8 grid lg:grid-cols-12 gap-10 lg:gap-16 items-center">
+          <div className="lg:col-span-5">
+            <SectionHeader kicker="PRIZE STRUCTURE" title="Money at every stage. Not just the podium." sub="$50,000 prize pool example. Every trader who advances earns. The Champion gets the headline number, but R16 qualifiers still walk away paid." />
+          </div>
+          <div className="lg:col-span-7" data-testid="prize-structure">
+            <StatPyramid tiers={PRIZE_TIERS} />
+          </div>
+        </div>
+      </section>
+
+      <BottomCTA headline="Are you bracket-ready?" sub="5 weeks. 32 traders. One champion. Five stages of payouts. Don't watch — enter." primaryLabel="Enter the tournament" primaryHref="/app/tournament" accent="lime" />
+      <Footer />
+    </main>
+  );
+}
+
+function Podium() {
+  const cols = [
+    { rank: 2, h: "h-28 md:h-36", label: "Runner-up", money: "$7,500", color: "bg-[#A78BFA]" },
+    { rank: 1, h: "h-40 md:h-52", label: "Champion", money: "$7,500", color: "bg-[#B4E04C]", crown: true },
+    { rank: 3, h: "h-20 md:h-28", label: "Semi-finalist", money: "$2,500", color: "bg-white/15" },
+  ];
+  return (
+    <div className="grid grid-cols-3 gap-2 items-end" data-testid="hero-podium">
+      {cols.map((c, i) => (
+        <motion.div key={c.rank} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 + i * 0.15 }} className="flex flex-col items-center">
+          {c.crown && <Crown className="w-7 h-7 text-[#B4E04C] mb-2 drop-shadow-[0_0_12px_#B4E04C]" />}
+          <div className={`w-full ${c.h} ${c.color} rounded-t-2xl flex flex-col justify-end items-center pb-4 border-x border-t border-white/10 ${c.crown ? "shadow-[0_0_40px_-6px_#B4E04C]" : ""}`}>
+            <div className={`text-[10px] font-mono uppercase tracking-wider ${c.rank === 1 ? "text-[#0F0F12]/60" : "text-white/55"}`}>#{c.rank}</div>
+            <div className={`font-black text-2xl md:text-3xl mt-1 ${c.rank === 1 ? "text-[#0F0F12]" : "text-white"}`}>{c.money}</div>
+            <div className={`text-[11px] mt-1 ${c.rank === 1 ? "text-[#0F0F12]/60" : "text-white/55"}`}>{c.label}</div>
+          </div>
+        </motion.div>
+      ))}
+    </div>
   );
 }

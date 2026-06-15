@@ -13,7 +13,7 @@ const toneClass = {
   green: "text-[#10B981]",
   red: "text-[#EF4444]",
   purple: "text-[#7C3AED]",
-  neutral: "text-[#1F2024]",
+  neutral: "text-white/85",
 };
 
 const tagLabel = {
@@ -30,7 +30,7 @@ function Row() {
     <div className="flex shrink-0 items-center">
       {items.map((it, i) => (
         <div key={i} className="flex items-center px-8 gap-3 shrink-0">
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#6B7280] bg-[#F5F5F2] border border-[#ECECEA] px-2 py-0.5 rounded-full">
+          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/45 bg-[#0B0B0F] border border-white/10 px-2 py-0.5 rounded-full">
             {tagLabel[it.type]}
           </span>
           <span className={`font-mono text-sm tracking-tight whitespace-nowrap ${toneClass[it.tone]}`}>
@@ -48,7 +48,7 @@ export default function Ticker() {
     <section
       id="ticker"
       data-testid="live-ticker-section"
-      className="relative bg-white border-y border-[#ECECEA] py-4 overflow-hidden"
+      className="relative bg-[#16161D] border-y border-white/10 py-4 overflow-hidden"
     >
       <div className="absolute left-0 top-0 bottom-0 w-32 z-10 bg-gradient-to-r from-white to-transparent pointer-events-none" />
       <div className="absolute right-0 top-0 bottom-0 w-32 z-10 bg-gradient-to-l from-white to-transparent pointer-events-none" />

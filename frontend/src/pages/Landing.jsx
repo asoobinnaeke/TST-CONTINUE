@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import Nav from "@/components/landing/Nav";
+import ProductNav from "@/components/products/ProductNav";
 import Hero from "@/components/landing/Hero";
 import Mission from "@/components/landing/Mission";
 import Problem from "@/components/landing/Problem";
@@ -26,8 +26,8 @@ export default function Landing() {
   }, [hash]);
 
   return (
-    <main className="min-h-screen bg-[#FAFAF7] text-[#0F0F12] overflow-x-hidden" data-testid="landing-page">
-      <Nav />
+    <main className="min-h-screen bg-[#0F0F12] text-white overflow-x-hidden" data-testid="landing-page">
+      <ProductNav />
       <Hero />
       <Mission />
       <Problem />
