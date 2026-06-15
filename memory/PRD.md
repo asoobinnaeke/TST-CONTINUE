@@ -8,7 +8,32 @@ Lime green #B4E04C + soft purple #A78BFA on off-white #FAFAF7. Satoshi font. Mod
 
 ## What's Built
 
-### v4.1 (2026-02-15) — 1v1 Duel matchmaking flow (CURRENT)
+### v4.2 (2026-02-15) — Trading Station detail · Tournament journey · Royale phases (CURRENT)
+- **Trading Station detail dialog** (`/app/frontend/src/components/app/StationDetailDialog.jsx`): clicking "Account" on any Trading Station row opens a dialog with **MT5 credentials** (login/password/server/platform — plain text with copy buttons), **side-by-side equity curves** for me vs opponent (duels), or **live leaderboard** + phase banner (royales), or **journey path** + prize earned (tournaments).
+- **Multi Trader journey view** (`/app/frontend/src/pages/app/Tournament.jsx`): new "My Journey" tab is default — lists every tournament I'm in with my exit stage + prize won, expandable to show per-stage path (Group → R16 → QF → SF → Final). "Expand to full bracket" reveals the complete 32-player knockout bracket with every match result + a highlighted "You" badge wherever the user appears.
+- **Trading Royale two-phase elimination engine** (`/app/backend/simulator.py: compute_royale_state` + `compute_royale_leaderboard`):
+  - Phase 1 = first half of timeline — all traders fighting, no eliminations
+  - Phase 2 = second half — at equal intervals **rounded to nearest 30s** (`half / (n-1)`), the lowest-equity trader is eliminated, repeated until 1 winner remains
+  - Real-time leaderboard with **struck-through eliminated rows + skull icon**; phase banner with countdown to next elimination
+  - Lazy state computation — no background tasks
+- **Seed data** (`/app/backend/seed.py`):
+  - Tournament: **T-SPRING (Spring Classic 2026)** — completed, TradeFury reached **Semi-Finals** (+$4,843 prize)
+  - Tournament: **T-BRONZE (Bronze Cup 2026)** — completed, TradeFury exited at **Round of 16**
+  - Tournament: **Diamond Open 2026** — ongoing Group Stage
+  - Tournament: **February Open** — registration open
+  - Royale lobbies refreshed on each backend startup: 1h lobby anchored to "12 min in" (phase 1) and 30min lobby anchored to "22 min in" (phase 2) so the demo never drifts
+- **New backend endpoints**:
+  - `GET /api/me/trading-station/duel/{id}` — me/opponent objects with equity_series + MT5 creds
+  - `GET /api/me/trading-station/royale/{id}` — lobby state + leaderboard + MT5
+  - `GET /api/me/trading-station/tournament/{id}` — journey + MT5
+  - `GET /api/royale/lobbies/{id}/state` — phase, eliminations, leaderboard
+  - `GET /api/me/tournaments/journey` — list of my journeys across all registered tournaments
+  - `GET /api/tournaments/{id}/bracket` — full bracket with usernames + is_you flag
+- **Tournament model extended** with `bracket` (R16/QF/SF/Final matches), `winner_id`, `account_size`.
+- **Bug fix**: `GET /api/me/trading-station` now correctly queries `participant_ids` (not `registered_ids`) for royale lobbies, so my royale entries actually appear in Trading Station.
+- **Tests**: 63 passing pytest cases total — 23 new in `/app/backend/tests/test_journey_and_royale.py`, 40 from v4.1 matchmaking suite. 0 failures.
+
+### v4.1 (2026-02-15) — 1v1 Duel matchmaking flow
 - **Multi-step matchmaking flow** on `/app/duel` Spawn centre: clicking an account-size card opens a new `DuelMatchmakingDialog` (`/app/frontend/src/components/app/DuelMatchmakingDialog.jsx`) that walks the user through 5 phases — Confirm payment → Queueing (5m) → Paired (Ready up, 3m) → Starting (MT5 creds + 3m pre-trade countdown) → Live (navigates to `/app/match/:id`). Polls `/api/duels/queue/{id}` every 2s for state changes.
 - **Mock wallet deduction** on entry. Insufficient balance gates the Pay button. Cancel during queue refunds in full.
 - **Real peer pairing + AI fallback (option 2c)**: `POST /api/duels/enter` matches with another queueing user at the same tier instantly; if the 5-minute window expires alone, the duel is paired with an AI opponent (synthetic bot persona — auto-marked ready). Bot label shown in the Paired step.

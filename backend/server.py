@@ -1935,6 +1935,32 @@ async def on_startup():
         logger.info(f"Seed: {'created' if created else 'already populated'}")
     except Exception as e:
         logger.exception(f"Seed failed: {e}")
+    # Refresh live royale lobbies so their `started_at` is anchored to current
+    # backend boot time. Keeps the seeded phase1/phase2 demo accurate even
+    # after the container has been running for a while.
+    try:
+        await _refresh_live_royale_lobbies()
+    except Exception as e:
+        logger.exception(f"Lobby refresh failed: {e}")
+
+
+async def _refresh_live_royale_lobbies():
+    """Reset started_at on live lobbies so phase 1/phase 2 demos stay fresh."""
+    now = _now()
+    # The demo profile: a 1h lobby ~12 min in (phase 1) and a 30min lobby ~22 min in (phase 2)
+    profiles = {3600: 12 * 60, 1800: 22 * 60}
+    lobbies = await db.find_many(db.royale_lobbies(), {"status": "live"})
+    for l in lobbies:
+        ts = l.get("timeline_seconds")
+        elapsed_target = profiles.get(ts)
+        if elapsed_target is None:
+            continue
+        new_started = now - timedelta(seconds=elapsed_target)
+        new_ends = new_started + timedelta(seconds=ts)
+        await db.royale_lobbies().update_one({"id": l["id"]}, {"$set": {
+            "started_at": new_started.isoformat(),
+            "ends_at": new_ends.isoformat(),
+        }})
 
 
 @app.on_event("shutdown")
