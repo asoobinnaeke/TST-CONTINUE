@@ -8,7 +8,18 @@ Lime green #B4E04C + soft purple #A78BFA on off-white #FAFAF7. Satoshi font. Mod
 
 ## What's Built
 
-### v4.3 (2026-02-15) — Landing restructure + dedicated product pages (CURRENT)
+### v4.5 (2026-02-15) — Dark landing + standalone Affiliate nav (CURRENT)
+- **Entire landing page rebuilt in the dark, graphics-first aesthetic** — base `#0F0F12`, elevated surfaces `#16161D`, lime + purple accents, mono labels. Every section (Hero, Mission, Problem, ProductSuite, HowItWorks, Pricing, slim Affiliate teaser, FAQ, Terms, Ticker, Footer) now matches the product-page treatment.
+- **Landing now uses `ProductNav`** (dark variant) instead of the cream `Nav`, with hash-scroll preserved on landing and cross-page navigation when on other routes.
+- **Affiliate moved out of the Products dropdown** — Products menu now lists exactly 5 items (1v1 Duel, Trading Royale, Multi Trader, Tag Team, Community Battles). **Affiliate is its own standalone top-level nav item** that routes directly to `/products/affiliate` (no more scrolling to a `#affiliate` section).
+- **Mobile-tested**: at 390px width, layout has no horizontal scroll, hamburger menu opens cleanly, hero text wraps gracefully.
+- **Tests**: 12/12 frontend Playwright tests pass — dark theme verified (computed bg `rgb(15,15,18)`), dropdown content verified, Router Link on Affiliate verified, mobile responsiveness verified, all app routes regression-tested.
+
+### v4.4 (2026-02-15) — Graphics-first product pages
+- Each of the 6 dedicated product pages was rebuilt around a signature infographic — **Equity Curve Clash** (Duel), **Elimination Timeline** (Royale), **Leaderboard Race** (Multi Trader), **Team Connection Viz** (Tag Team), **Tug Of War** (Community), **Affiliate Tree** (Affiliate). All on a unified dark canvas with Framer Motion staggered reveals, lime+purple accent system, kinetic CTA marquees, bento rule grids, and tier ladders/pyramids replacing tables.
+- New shared building blocks: `ProductNav`, `ProductPrimitives` (StatStrip, SectionHeader, NeonBeam, BentoRuleCard, KineticMarquee, BottomCTA, StatPyramid, TierLadder, BackToLanding), `ProductInfographics` (all 6 signature visuals).
+
+### v4.3 (2026-02-15) — Landing restructure + dedicated product pages
 - **Removed** the bulky `ProductDeepDive` section from the landing page — replaced with a slim, scannable flow.
 - **Simplified `Affiliate` section** on landing: single teaser card with 4 tier chips (Rookie 10% → Legend 25%), "See full program" → `/products/affiliate`, "Get your referral link" → `/app/affiliate`.
 - **6 new dedicated product pages** powered by a shared `ProductPageLayout` component:

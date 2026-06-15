@@ -1,95 +1,52 @@
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Link } from "react-router-dom";
+import { HelpCircle, ArrowUpRight } from "lucide-react";
 
-const items = [
-  {
-    q: "Is this real trading or simulated?",
-    a: "Competitions use real market prices delivered to platform-allocated demo/simulated accounts. You are trading against real market conditions — but the capital is provided by the platform, not by you. Your only financial exposure is the entry fee.",
-  },
-  {
-    q: "How do I get paid my winnings?",
-    a: "Winnings are credited to your wallet upon match completion and verified result. You can withdraw to your linked bank account or crypto wallet. Minimum withdrawal is $10.",
-  },
-  {
-    q: "What markets can I trade?",
-    a: "Forex (major, minor, exotic pairs) · Cryptocurrency (BTC, ETH and top altcoins) · Stocks & Indices (S&P 500, NASDAQ, FTSE, DAX, Nikkei and more) · Commodities (Gold, Silver, Crude Oil, Natural Gas).",
-  },
-  {
-    q: "What happens if my opponent disconnects during a duel?",
-    a: "If a technical disconnection is confirmed on our end, a grace period of 2 minutes is given. If the trader does not reconnect, the remaining trader is declared the winner by default. Disputed results can be escalated to support within 24 hours.",
-  },
-  {
-    q: "Can I change my username?",
-    a: "No. Your username is your permanent trading identity on the platform. Choose carefully when you sign up — it cannot be changed under any circumstances.",
-  },
-  {
-    q: "What is a Custom Duel?",
-    a: "A Custom Duel is a 1v1 competition created by a Pro Plan member with fully personalised rules: leverage, drawdown limits, account size, timeline, instruments, and entry fee. Custom Duels are highlighted in the Duel Broadcast Centre, distinguishing them from Standard Duels.",
-  },
-  {
-    q: "What is the spawn centre?",
-    a: "When you purchase a standard account for a 1v1 Duel, you are placed in the Spawn Centre — a live matchmaking queue. If another trader purchases the same account size, you are automatically paired. A 5-minute pairing countdown begins. Once paired, both traders must accept. Upon acceptance, your trading accounts are activated and a countdown begins before trading opens.",
-  },
-  {
-    q: "Is The Select Traders regulated?",
-    a: "The Select Traders operates as a skill-based competitive platform. We work with regulated liquidity providers for market data and execution infrastructure. Depending on your jurisdiction, different terms may apply. See our Terms & Conditions for full details.",
-  },
-  {
-    q: "What is the Free plan, exactly?",
-    a: "The Free plan lets you watch all broadcasted duels, see live leaderboards, join standard (platform-created) duels and Royale lobbies, and participate in the spawn centre for standard duels. You cannot create custom duels or events — that requires a Pro Plan.",
-  },
-  {
-    q: "How does Trading Royale work?",
-    a: "A Royale lobby fills up with 10, 20, or 50 traders (depending on the session). All pay a $20 entry. All receive equal accounts and begin trading simultaneously. The trader with the highest equity or balance when the timer ends wins the entire prize pool (less the platform's 15% rake).",
-  },
+const HIGHLIGHTS = [
+  { label: "Platform basics" },
+  { label: "1v1 Duel" },
+  { label: "Trading Royale" },
+  { label: "Multi Trader" },
+  { label: "Tag Team" },
+  { label: "Affiliate" },
+  { label: "MT5 & Trading" },
 ];
 
+/**
+ * Slim landing-page FAQ teaser. Full FAQ lives on /faq.
+ */
 export default function Faq() {
   return (
-    <section
-      id="faq"
-      data-testid="faq-section"
-      className="relative py-24 lg:py-32 border-t border-white/10"
-    >
-      <div className="max-w-7xl mx-auto px-5 lg:px-8 grid lg:grid-cols-12 gap-12">
-        <div className="lg:col-span-4">
-          <div className="text-xs font-mono uppercase tracking-[0.18em] text-white/45">
-            06 — Answers
+    <section id="faq" data-testid="faq-section" className="relative bg-[#0F0F12] py-20 lg:py-24 border-t border-white/5">
+      <div className="max-w-7xl mx-auto px-5 lg:px-8">
+        <div className="bg-[#16161D] border border-white/10 rounded-3xl p-7 lg:p-10 grid lg:grid-cols-12 gap-8 items-center" data-testid="faq-teaser">
+          <div className="lg:col-span-7">
+            <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-3 py-1.5 mb-4">
+              <HelpCircle className="w-3.5 h-3.5 text-[#B4E04C]" />
+              <span className="text-[11px] font-mono uppercase tracking-[0.18em] text-white">FAQ · 65+ answers</span>
+            </div>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tighter text-white leading-[1.05]">
+              Got questions? <br className="hidden sm:block" />
+              <span className="text-[#B4E04C]">We've answered every one.</span>
+            </h2>
+            <p className="mt-4 text-[14.5px] text-white/55 max-w-xl leading-relaxed">
+              Detailed walkthroughs for the platform, every product, the wallet, KYC, MT5 setup, the affiliate program, and more. Sorted by topic.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-2" data-testid="faq-topics">
+              {HIGHLIGHTS.map((h) => (
+                <span key={h.label} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 bg-white/5 border border-white/10 text-[12px] font-medium text-white/75">
+                  {h.label}
+                </span>
+              ))}
+            </div>
           </div>
-          <h2 className="mt-3 text-4xl md:text-5xl font-bold tracking-tight text-white leading-[1.05]">
-            Frequently asked questions.
-          </h2>
-          <p className="mt-5 text-[15px] text-white/65">
-            Can't find what you're looking for?{" "}
-            <a href="#footer" className="text-white underline underline-offset-4 decoration-[#B4E04C] decoration-2 hover:decoration-[#A78BFA]">
-              Get in touch
-            </a>
-            .
-          </p>
-        </div>
-
-        <div className="lg:col-span-8">
-          <Accordion type="single" collapsible className="divide-y divide-[#ECECEA] border-y border-white/10">
-            {items.map((item, i) => (
-              <AccordionItem
-                key={i}
-                value={`item-${i}`}
-                data-testid={`faq-item-${i}`}
-                className="border-none [&_*]:!no-underline"
-              >
-                <AccordionTrigger className="text-left text-white font-semibold text-[16px] md:text-[17px] py-6 hover:text-white">
-                  {item.q}
-                </AccordionTrigger>
-                <AccordionContent className="text-white/65 leading-relaxed pb-6 text-[15px] pr-8">
-                  {item.a}
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
+          <div className="lg:col-span-5 flex flex-col gap-3 lg:items-end">
+            <Link to="/faq" data-testid="faq-cta-full"
+              className="inline-flex items-center gap-2 bg-[#B4E04C] text-[#0F0F12] text-[14px] font-bold px-6 py-3.5 rounded-full hover:brightness-110 transition-all hover:-translate-y-0.5 w-fit">
+              See full FAQ
+              <ArrowUpRight className="w-4 h-4" strokeWidth={2.5} />
+            </Link>
+            <a href="mailto:support@selecttraders.com" data-testid="faq-cta-support" className="text-[12.5px] text-white/45 hover:text-white underline-offset-2 hover:underline">Or contact support →</a>
+          </div>
         </div>
       </div>
     </section>

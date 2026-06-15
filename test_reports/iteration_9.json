@@ -1,0 +1,28 @@
+{
+  "summary": "Frontend-only testing of dedicated FAQ page (/faq) and landing teaser. All critical flows verified: page load, hero copy + 69-answer badge, 8 sidebar sections with exact question counts (10/11/9/8/7/6/8/10), accordion expand/collapse via aria-expanded, live search filter + <mark> highlights for 'leverage', empty-state on no-match, search clear restores all 8 sections, sidebar anchor navigation (#faq-trading), Back button -> /, landing slim teaser rendering, 7 topic pills, 'See full FAQ' CTA navigation, nav-link-faq is a Router Link to /faq, mobile (390px) hides desktop sidebar and shows 8 horizontal pills. Regression confirmed: Affiliate is NOT in Products dropdown; Affiliate nav still links to /products/affiliate; FAQ link href='/faq'.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Landing teaser (components/landing/Faq.jsx)", "issues": ["Badge says 'FAQ · 65+ answers' but the dedicated /faq page now ships with 69 answers. Minor copy inconsistency — consider updating teaser badge to '69 answers' or keep '65+' as approximate. Non-blocking."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "(Optional) Sync the landing teaser badge text ('65+ answers') with the real 69-question total on /faq for consistency."
+  ],
+  "critical_code_review_comments": [
+    "FaqPage.jsx is ~420 lines including a large inline SECTIONS data array. Acceptable, but if FAQ data grows further consider extracting SECTIONS into a separate /data/faq.js module for cleanliness.",
+    "Highlight component uses dangerouslySetInnerHTML-free approach (good). RegExp escape function present (good).",
+    "Sidebar uses native <a href='#...'> anchors — works fine for in-page scroll but on Router-based pages this triggers browser default behaviour; consider scrollIntoView for smoother UX (non-blocking)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped per request)", "frontend": "100%"},
+  "test_credentials": "N/A",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "FAQ page is fully functional. Desktop layout verified at 1920x1080, mobile at 390x844. All data-testids correctly wired. 69 Q&As across 8 sections. Search + accordion + navigation + back-to-landing all green. Only nit: landing teaser badge text says '65+' vs actual 69 — purely cosmetic.",
+  "rca of the issue": "No bugs found."
+}

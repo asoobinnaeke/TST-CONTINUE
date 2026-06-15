@@ -17,6 +17,7 @@ import Match from "@/pages/app/Match";
 import Affiliate from "@/pages/app/Affiliate";
 import TradingStation from "@/pages/app/TradingStation";
 import TermsPage from "@/pages/Terms";
+import FaqPage from "@/pages/FaqPage";
 import ProductDuel from "@/pages/products/ProductDuel";
 import ProductRoyale from "@/pages/products/ProductRoyale";
 import ProductMulti from "@/pages/products/ProductMulti";
@@ -41,6 +42,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/terms" element={<TermsPage />} />
+          <Route path="/faq" element={<FaqPage />} />
           <Route path="/products/duel" element={<ProductDuel />} />
           <Route path="/products/royale" element={<ProductRoyale />} />
           <Route path="/products/tournament" element={<ProductMulti />} />

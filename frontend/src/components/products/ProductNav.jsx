@@ -10,7 +10,7 @@ const links = [
   { label: "How it works", id: "how" },
   { label: "Pricing", id: "pricing" },
   { label: "Affiliate", id: "affiliate", href: "/products/affiliate" },
-  { label: "FAQ", id: "faq" },
+  { label: "FAQ", id: "faq", href: "/faq" },
 ];
 
 const productMenu = [
